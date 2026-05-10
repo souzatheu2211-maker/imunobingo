@@ -19,7 +19,7 @@ const Welcome = () => {
         backgroundPosition: 'center',
       }}
     >
-      <div className="z-10 text-center max-w-2xl space-y-8 animate-in fade-in zoom-in duration-1000">
+      <div className="z-10 text-center max-w-2xl space-y-8 animate-in fade-in zoom-in duration-1000 mb-20">
         <div className="flex gap-6 justify-center items-center animate-pulse">
           <img src={fsssLogo} alt="FSSS" className="h-20 md:h-24 object-contain" />
           <img src={enfLogo} alt="Enfermagem" className="h-20 md:h-24 object-contain" />
@@ -44,7 +44,7 @@ const Welcome = () => {
         </Button>
       </div>
 
-      <div className="absolute bottom-10 w-full">
+      <div className="absolute bottom-4 w-full">
         <Credits />
       </div>
     </div>

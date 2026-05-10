@@ -21,6 +21,8 @@ const queryClient = new QueryClient();
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const isRoom = location.pathname.startsWith('/room/');
+
   const navItems = [
     { path: '/home', icon: HomeIcon, label: 'Início' },
     { path: '/bingo', icon: Gamepad2, label: 'Bingo' },
@@ -32,6 +34,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
+  // Se estiver em uma sala, renderiza apenas o conteúdo (tela cheia)
+  if (isRoom) {
+    return (
+      <div className="min-h-screen bg-slate-950 overflow-x-hidden">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">

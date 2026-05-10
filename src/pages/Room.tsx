@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Users, Play, RotateCcw, Copy, LogOut, Dna } from 'lucide-react';
+import { Trophy, Users, Play, RotateCcw, Copy, LogOut, Dna, Microscope, Activity } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
+import { cn } from '@/lib/utils';
 
 const Room = () => {
   const { id: roomId } = useParams();
@@ -33,7 +34,6 @@ const Room = () => {
     }
 
     const setup = async () => {
-      // Fetch Room
       const { data: roomData } = await supabase.from('rooms').select('*').eq('id', roomId).single();
       if (!roomData) {
         showError("Sala não encontrada.");
@@ -42,7 +42,6 @@ const Room = () => {
       }
       setRoom(roomData);
 
-      // Fetch Players
       const { data: playersData } = await supabase.from('players').select('*').eq('room_id', roomId);
       setPlayers(playersData || []);
 
@@ -53,7 +52,6 @@ const Room = () => {
       }
       setMyPlayer(me);
 
-      // Fetch or Generate Card
       const { data: cardData } = await supabase
         .from('bingo_cards')
         .select('*')
@@ -74,7 +72,6 @@ const Room = () => {
         setCardTerms(selected);
       }
 
-      // Fetch Marks
       const { data: marksData } = await supabase
         .from('marks')
         .select('term')
@@ -82,7 +79,6 @@ const Room = () => {
         .eq('room_id', roomId);
       setMarkedTerms(marksData?.map(m => m.term) || []);
 
-      // Fetch Draws
       const { data: drawsData } = await supabase
         .from('draws')
         .select('*')
@@ -99,7 +95,6 @@ const Room = () => {
 
     setup();
 
-    // Realtime Subscriptions
     const roomChannel = supabase.channel(`room:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
@@ -171,7 +166,6 @@ const Room = () => {
       term: term
     });
 
-    // Update points
     await supabase.from('players').update({ points: myPlayer.points + 10 }).eq('id', playerId);
   };
 
@@ -183,15 +177,13 @@ const Room = () => {
     }
 
     const isMarked = (row: number, col: number) => {
-      if (row === 2 && col === 2) return true; // Free cell
+      if (row === 2 && col === 2) return true;
       return markedTerms.includes(grid[row][col]);
     };
 
-    // Rows
     for (let i = 0; i < size; i++) {
       if (grid[i].every((_, j) => isMarked(i, j))) return true;
     }
-    // Cols
     for (let j = 0; j < size; j++) {
       let colWin = true;
       for (let i = 0; i < size; i++) {
@@ -199,7 +191,6 @@ const Room = () => {
       }
       if (colWin) return true;
     }
-    // Diagonals
     let diag1 = true;
     let diag2 = true;
     for (let i = 0; i < size; i++) {
@@ -212,10 +203,10 @@ const Room = () => {
   const claimBingo = async () => {
     if (checkBingo()) {
       confetti({
-        particleCount: 150,
-        spread: 70,
+        particleCount: 200,
+        spread: 90,
         origin: { y: 0.6 },
-        colors: ['#7c3aed', '#10b981', '#3b82f6']
+        colors: ['#7c3aed', '#10b981', '#3b82f6', '#f43f5e']
       });
       
       await supabase.from('rooms').update({ status: 'finished' }).eq('id', roomId);
@@ -243,82 +234,90 @@ const Room = () => {
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando laboratório...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-6 lg:p-10 animate-in fade-in duration-700">
+      {/* Background Glows */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-violet-600/10 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
         
         {/* Left Column: Game Board */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="bg-violet-600 p-2 rounded-lg">
-                <Dna className="w-6 h-6 text-white" />
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/40 p-5 rounded-[2rem] border border-white/5 backdrop-blur-xl shadow-2xl">
+            <div className="flex items-center gap-4">
+              <div className="bg-gradient-to-br from-violet-600 to-blue-600 p-3 rounded-2xl shadow-lg shadow-violet-600/20">
+                <Microscope className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-white tracking-tight">IMUNO<span className="text-violet-500">BINGO</span></h1>
+                <h1 className="text-2xl font-black text-white tracking-tight">IMUNO<span className="text-violet-500">BINGO</span></h1>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-violet-400 border-violet-400/30">
+                  <Badge variant="outline" className="font-mono text-violet-400 border-violet-400/30 bg-violet-400/5">
                     {room?.code}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-white" onClick={copyCode}>
-                    <Copy className="h-3 w-3" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-white hover:bg-white/5" onClick={copyCode}>
+                    <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {isHost && room.status === 'waiting' && (
-                <Button onClick={startGame} className="bg-emerald-600 hover:bg-emerald-700 font-bold">
-                  <Play className="mr-2 h-4 w-4" /> INICIAR JOGO
+                <Button onClick={startGame} className="bg-emerald-600 hover:bg-emerald-500 font-black px-6 rounded-xl shadow-lg shadow-emerald-600/20">
+                  <Play className="mr-2 h-4 w-4" /> INICIAR
                 </Button>
               )}
               {isHost && room.status === 'finished' && (
-                <Button onClick={resetGame} variant="outline" className="border-slate-700 hover:bg-slate-800">
+                <Button onClick={resetGame} variant="outline" className="border-white/10 hover:bg-white/5 rounded-xl">
                   <RotateCcw className="mr-2 h-4 w-4" /> REINICIAR
                 </Button>
               )}
-              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/')}>
+              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-xl" onClick={() => navigate('/bingo')}>
                 <LogOut className="mr-2 h-4 w-4" /> SAIR
               </Button>
             </div>
           </div>
 
           {/* Current Draw Panel */}
-          <Card className="bg-slate-900 border-slate-800 overflow-hidden shadow-xl">
-            <CardHeader className="bg-slate-800/50 border-b border-slate-800 py-3">
-              <CardTitle className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-yellow-500" /> Sorteio Atual
+          <Card className="bg-slate-900/40 border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl">
+            <CardHeader className="bg-white/5 border-b border-white/5 py-4">
+              <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Activity className="w-4 h-4 text-violet-500 animate-pulse" /> Sorteio em Tempo Real
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 text-center min-h-[180px] flex flex-col items-center justify-center">
+            <CardContent className="p-8 text-center min-h-[220px] flex flex-col items-center justify-center">
               {currentDraw ? (
-                <div className="space-y-4 animate-in fade-in zoom-in duration-300">
-                  <p className="text-lg md:text-2xl font-medium text-slate-200 leading-relaxed italic">
+                <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+                  <p className="text-xl md:text-3xl font-bold text-white leading-tight max-w-2xl mx-auto">
                     "{currentDraw.question}"
                   </p>
                   {room.status === 'finished' && (
-                    <Badge className="bg-emerald-500 text-white text-lg px-4 py-1">
-                      Resposta: {currentDraw.answer}
-                    </Badge>
+                    <div className="inline-block bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xl font-black px-6 py-2 rounded-2xl">
+                      RESPOSTA: {currentDraw.answer}
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="text-slate-500 space-y-2">
-                  <p className="text-xl font-bold">Aguardando sorteio...</p>
-                  <p className="text-sm">O host irá sortear a primeira carta em breve.</p>
+                <div className="text-slate-500 space-y-3">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                    <Trophy className="w-8 h-8 text-slate-700" />
+                  </div>
+                  <p className="text-xl font-black uppercase tracking-widest">Aguardando Host...</p>
                 </div>
               )}
               
               {isHost && room.status === 'playing' && (
-                <Button onClick={drawCard} size="lg" className="mt-6 bg-violet-600 hover:bg-violet-700 font-black text-lg px-8 py-6 shadow-lg shadow-violet-600/20">
-                  SORTEAR CARTA
+                <Button onClick={drawCard} size="lg" className="mt-8 bg-violet-600 hover:bg-violet-500 font-black text-xl px-10 py-7 rounded-2xl shadow-2xl shadow-violet-600/40 transition-all active:scale-95">
+                  SORTEAR PRÓXIMA CARTA
                 </Button>
               )}
             </CardContent>
           </Card>
 
-          {/* Bingo Card */}
-          <div className="relative">
+          {/* Bingo Card Area */}
+          <div className="relative py-4">
             <BingoCard 
               terms={cardTerms} 
               markedTerms={markedTerms} 
@@ -327,12 +326,12 @@ const Room = () => {
             />
             
             {room.status === 'playing' && (
-              <div className="mt-8 flex justify-center">
+              <div className="mt-10 flex justify-center">
                 <Button 
                   onClick={claimBingo}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-2xl px-12 py-8 rounded-2xl shadow-xl shadow-emerald-500/20 animate-bounce"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-3xl px-16 py-10 rounded-[2rem] shadow-2xl shadow-emerald-500/40 animate-bounce transition-all active:scale-90"
                 >
-                  PEDIR BINGO!
+                  BINGO!
                 </Button>
               </div>
             )}
@@ -342,31 +341,37 @@ const Room = () => {
         {/* Right Column: Sidebar */}
         <div className="lg:col-span-4 space-y-6">
           {/* Players & Ranking */}
-          <Card className="bg-slate-900 border-slate-800 shadow-xl">
-            <CardHeader className="py-4 border-b border-slate-800">
-              <CardTitle className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Users className="w-4 h-4" /> Jogadores ({players.length})
+          <Card className="bg-slate-900/40 border-white/5 rounded-[2rem] shadow-2xl backdrop-blur-xl overflow-hidden">
+            <CardHeader className="py-5 border-b border-white/5 bg-white/5">
+              <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Users className="w-4 h-4 text-blue-500" /> Ranking do Laboratório
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[250px]">
-                <div className="divide-y divide-slate-800">
+              <ScrollArea className="h-[300px]">
+                <div className="divide-y divide-white/5">
                   {players.sort((a, b) => b.points - a.points).map((p, idx) => (
-                    <div key={p.id} className="flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-slate-600 w-4">{idx + 1}.</span>
+                    <div key={p.id} className={cn(
+                      "flex items-center justify-between p-5 transition-colors",
+                      p.id === playerId ? "bg-violet-600/10" : "hover:bg-white/5"
+                    )}>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-black text-slate-600 w-5">{idx + 1}º</span>
                         <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                          "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shadow-inner",
                           p.id === playerId ? "bg-violet-600 text-white" : "bg-slate-800 text-slate-400"
                         )}>
                           {p.name[0].toUpperCase()}
                         </div>
-                        <span className={cn("font-medium", p.id === playerId ? "text-white" : "text-slate-300")}>
-                          {p.name} {room.host_id === p.id && "👑"}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={cn("font-bold text-sm", p.id === playerId ? "text-white" : "text-slate-300")}>
+                            {p.name} {room.host_id === p.id && "👑"}
+                          </span>
+                          {p.id === playerId && <span className="text-[10px] text-violet-400 font-bold uppercase">Você</span>}
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="bg-slate-800 text-violet-400 font-bold">
-                        {p.points} pts
+                      <Badge variant="secondary" className="bg-slate-800/50 text-violet-400 font-black px-3 py-1 rounded-lg border border-white/5">
+                        {p.points} PTS
                       </Badge>
                     </div>
                   ))}
@@ -376,22 +381,28 @@ const Room = () => {
           </Card>
 
           {/* Chat */}
-          <Chat roomId={roomId!} playerName={localStorage.getItem('imuno_player_name') || 'Anônimo'} />
+          <div className="rounded-[2rem] overflow-hidden shadow-2xl">
+            <Chat roomId={roomId!} playerName={localStorage.getItem('imuno_player_name') || 'Anônimo'} />
+          </div>
 
           {/* History */}
-          <Card className="bg-slate-900 border-slate-800 shadow-xl">
-            <CardHeader className="py-4 border-b border-slate-800">
-              <CardTitle className="text-sm font-bold text-slate-400 uppercase tracking-widest">Histórico de Cartas</CardTitle>
+          <Card className="bg-slate-900/40 border-white/5 rounded-[2rem] shadow-2xl backdrop-blur-xl overflow-hidden">
+            <CardHeader className="py-5 border-b border-white/5 bg-white/5">
+              <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Histórico de Descobertas</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-              <ScrollArea className="h-[150px]">
+            <CardContent className="p-5">
+              <ScrollArea className="h-[180px]">
                 <div className="flex flex-wrap gap-2">
                   {drawHistory.map((d, i) => (
-                    <Badge key={i} variant="outline" className="bg-slate-800/50 border-slate-700 text-slate-400">
+                    <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-slate-400 font-bold py-1.5 px-3 rounded-xl">
                       {d.answer}
                     </Badge>
                   ))}
-                  {drawHistory.length === 0 && <p className="text-xs text-slate-600 italic">Nenhuma carta sorteada ainda.</p>}
+                  {drawHistory.length === 0 && (
+                    <div className="w-full text-center py-10 text-slate-600 italic text-xs">
+                      Nenhuma carta sorteada ainda.
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>

@@ -14,8 +14,11 @@ import Profile from "./pages/Profile";
 import Studies from "./pages/Studies";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut } from "lucide-react";
+import Credits from "./components/Credits";
+import fsssLogo from "@/assets/fsss.png";
+import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import loginBg from "@/assets/login-bg.png";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +38,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
   };
 
-  // Se estiver em uma sala, renderiza apenas o conteúdo (tela cheia)
   if (isRoom) {
     return (
       <div className="min-h-screen bg-slate-950 overflow-x-hidden">
@@ -45,52 +47,79 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
-      {/* Sidebar Desktop */}
-      <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col p-6">
-        <div className="mb-10">
-          <h1 className="text-2xl font-black text-white tracking-tight">IMUNO<span className="text-violet-500">BINGO</span></h1>
+    <div 
+      className="min-h-screen bg-slate-950 flex flex-col md:flex-row relative overflow-hidden font-sans"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.95)), url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Logo Superior Esquerdo */}
+      <div className="absolute top-6 left-6 z-50 opacity-40 hover:opacity-100 transition-opacity hidden md:block">
+        <img src={fsssLogo} alt="FSSS" className="h-12 object-contain" />
+      </div>
+
+      {/* Sidebar Desktop Glass */}
+      <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
+        <div className="mb-12 mt-16">
+          <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
+            <Sparkles className="text-violet-500 animate-pulse" />
+            IMUNO<span className="text-violet-500">BINGO</span>
+          </h1>
         </div>
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-3">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
+                "flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all duration-300 group",
                 location.pathname === item.path 
-                  ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" 
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  ? "bg-violet-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.4)] scale-105" 
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className={cn("w-5 h-5 transition-transform group-hover:scale-125", location.pathname === item.path && "animate-bounce")} />
               {item.label}
             </Link>
           ))}
         </nav>
-        <button 
-          onClick={handleLogout}
-          className="mt-auto flex items-center gap-3 px-4 py-3 text-slate-500 hover:text-red-400 transition-colors"
-        >
-          <LogOut className="w-5 h-5" /> Sair
-        </button>
+        
+        <div className="mt-auto pt-8 border-t border-white/5">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 px-5 py-4 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-2xl transition-all font-bold"
+          >
+            <LogOut className="w-5 h-5" /> Sair da Conta
+          </button>
+          <div className="mt-6 opacity-30 scale-75 origin-left">
+            <Credits />
+          </div>
+        </div>
       </aside>
 
-      {/* Mobile Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around p-4 z-50">
+      {/* Mobile Nav Glass */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/80 border-t border-white/10 backdrop-blur-2xl flex justify-around p-4 z-50">
         {navItems.map((item) => (
           <Link key={item.path} to={item.path} className={cn(
-            "p-2 rounded-lg",
-            location.pathname === item.path ? "text-violet-500" : "text-slate-500"
+            "p-3 rounded-2xl transition-all",
+            location.pathname === item.path ? "bg-violet-600 text-white shadow-lg" : "text-slate-500"
           )}>
             <item.icon className="w-6 h-6" />
           </Link>
         ))}
+        <button onClick={handleLogout} className="p-3 text-slate-500">
+          <LogOut className="w-6 h-6" />
+        </button>
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-10 pb-24 md:pb-10 overflow-y-auto">
-        {children}
+      <main className="flex-1 p-6 md:p-12 pb-28 md:pb-12 overflow-y-auto relative z-10">
+        <div className="max-w-6xl mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

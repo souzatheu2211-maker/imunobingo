@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Quote, Sparkles, BookOpen, Trophy } from 'lucide-react';
+import { Quote, Sparkles, BookOpen, Trophy, Activity, ShieldCheck } from 'lucide-react';
 
 const Home = () => {
   const quotes = [
@@ -11,53 +11,63 @@ const Home = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-gradient-to-r from-violet-600 to-blue-600 p-8 rounded-3xl text-white shadow-xl">
-        <h1 className="text-3xl font-black mb-2">Olá, Futuro Profissional! 🩺</h1>
-        <p className="opacity-90">Bem-vindo ao seu portal de estudos e diversão em Imunologia.</p>
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
+          <ShieldCheck size={120} />
+        </div>
+        <h1 className="text-4xl font-black mb-3 tracking-tight">Olá, Futuro Profissional! 🩺</h1>
+        <p className="text-lg text-slate-200 font-medium">Bem-vindo ao seu portal de estudos e diversão em Imunologia.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-slate-900 border-slate-800">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
           <CardHeader>
-            <CardTitle className="text-violet-400 flex items-center gap-2">
-              <Quote className="w-5 h-5" /> Reflexão do Dia
+            <CardTitle className="text-violet-400 flex items-center gap-3 text-xl font-black uppercase tracking-widest">
+              <Quote className="w-6 h-6" /> Reflexão do Dia
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-300 italic text-lg">
+            <p className="text-slate-200 italic text-xl leading-relaxed font-medium">
               "{quotes[Math.floor(Math.random() * quotes.length)]}"
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
           <CardHeader>
-            <CardTitle className="text-emerald-400 flex items-center gap-2">
-              <Sparkles className="w-5 h-5" /> Curiosidade
+            <CardTitle className="text-emerald-400 flex items-center gap-3 text-xl font-black uppercase tracking-widest">
+              <Sparkles className="w-6 h-6" /> Curiosidade
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-300">
+            <p className="text-slate-200 text-lg leading-relaxed font-medium">
               Você sabia que o corpo humano produz cerca de 100 bilhões de novos neutrófilos todos os dias? Eles são a linha de frente da sua imunidade inata!
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex items-center gap-4">
-          <div className="bg-blue-500/20 p-3 rounded-xl"><BookOpen className="text-blue-400" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/10 flex items-center gap-5 hover:scale-105 transition-transform">
+          <div className="bg-blue-500/20 p-4 rounded-2xl"><BookOpen className="text-blue-400 w-8 h-8" /></div>
           <div>
-            <p className="text-2xl font-bold text-white">12</p>
-            <p className="text-xs text-slate-500 uppercase font-bold">PDFs de Estudo</p>
+            <p className="text-3xl font-black text-white">12</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">PDFs de Estudo</p>
           </div>
         </div>
-        <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex items-center gap-4">
-          <div className="bg-violet-500/20 p-3 rounded-xl"><Trophy className="text-violet-400" /></div>
+        <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/10 flex items-center gap-5 hover:scale-105 transition-transform">
+          <div className="bg-violet-500/20 p-4 rounded-2xl"><Trophy className="text-violet-400 w-8 h-8" /></div>
           <div>
-            <p className="text-2xl font-bold text-white">5</p>
-            <p className="text-xs text-slate-500 uppercase font-bold">Partidas Ganhas</p>
+            <p className="text-3xl font-black text-white">5</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Partidas Ganhas</p>
+          </div>
+        </div>
+        <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/10 flex items-center gap-5 hover:scale-105 transition-transform">
+          <div className="bg-emerald-500/20 p-4 rounded-2xl"><Activity className="text-emerald-400 w-8 h-8 animate-pulse" /></div>
+          <div>
+            <p className="text-3xl font-black text-white">Ativo</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Status Global</p>
           </div>
         </div>
       </div>

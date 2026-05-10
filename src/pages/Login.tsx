@@ -23,10 +23,11 @@ import {
 import { showError, showSuccess } from '@/utils/toast';
 import enfLogo from '@/assets/enf.png';
 import fsssLogo from '@/assets/fsss.png';
+import loginBg from '@/assets/login-bg.png';
 
 const FloatingIcon = ({ children, className, delay = "0s" }: { children: React.ReactNode, className?: string, delay?: string }) => (
   <div 
-    className={`absolute animate-pulse pointer-events-none opacity-20 ${className}`}
+    className={`absolute animate-pulse pointer-events-none opacity-10 ${className}`}
     style={{ animationDelay: delay, animationDuration: '4s' }}
   >
     {children}
@@ -77,7 +78,14 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div 
+      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-slate-950"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.8)), url(${loginBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       {/* Elementos de Imunologia Animados no Fundo (Células de Defesa) */}
       <FloatingIcon className="top-10 left-10 text-violet-500" delay="0s"><Bug size={48} /></FloatingIcon>
       <FloatingIcon className="top-20 right-20 text-blue-500" delay="1s"><Dna size={64} /></FloatingIcon>
@@ -109,7 +117,7 @@ const Login = () => {
       </div>
 
       {/* Card de Login Mais Compacto */}
-      <Card className="w-full max-w-[320px] bg-slate-900/90 border-slate-800 backdrop-blur-2xl shadow-[0_0_50px_-12px_rgba(124,58,237,0.3)] z-10 overflow-hidden">
+      <Card className="w-full max-w-[320px] bg-slate-900/80 border-slate-800 backdrop-blur-xl shadow-[0_0_50px_-12px_rgba(124,58,237,0.3)] z-10 overflow-hidden">
         <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-violet-600 to-pink-600" />
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-xl font-black text-white tracking-tight">

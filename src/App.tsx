@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import Welcome from "./pages/Welcome";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Index from "./pages/Index";
@@ -110,6 +111,7 @@ const App = () => {
         <Sonner position="top-center" />
         <BrowserRouter>
           <Routes>
+            <Route path="/welcome" element={!session ? <Welcome /> : <Navigate to="/home" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" />} />
             
             <Route path="/home" element={session ? <Layout><Home /></Layout> : <Navigate to="/login" />} />
@@ -119,7 +121,7 @@ const App = () => {
             <Route path="/profile" element={session ? <Layout><Profile /></Layout> : <Navigate to="/login" />} />
             <Route path="/admin" element={session ? <Layout><Admin /></Layout> : <Navigate to="/login" />} />
 
-            <Route path="/" element={<Navigate to={session ? "/home" : "/login"} />} />
+            <Route path="/" element={<Navigate to={session ? "/home" : "/welcome"} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

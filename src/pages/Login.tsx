@@ -4,30 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  Microscope, 
-  ShieldCheck, 
-  Mail, 
-  Lock, 
-  User, 
-  GraduationCap, 
-  Instagram, 
-  Bug, 
-  Dna, 
-  Activity,
-  Zap
-} from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
-import enfLogo from '@/assets/enf.png';
-import fsssLogo from '@/assets/fsss.png';
-
-const FloatingIcon = ({ children<dyad-write path="src/pages/Login.tsx" description="Tela de login ultra-estilizada com elementos de imunologia animados">
-import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Microscope, 
   ShieldCheck, 
   Mail, 
   Lock, 

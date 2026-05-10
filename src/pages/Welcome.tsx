@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import Credits from '@/components/Credits';
 import loginBg from '@/assets/login-bg.png';
+import enfLogo from '@/assets/enf.png';
+import fsssLogo from '@/assets/fsss.png';
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -18,8 +20,9 @@ const Welcome = () => {
       }}
     >
       <div className="z-10 text-center max-w-2xl space-y-8 animate-in fade-in zoom-in duration-1000">
-        <div className="mx-auto w-20 h-20 bg-violet-600 rounded-3xl flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.5)] animate-bounce">
-          <ShieldCheck className="text-white w-12 h-12" />
+        <div className="flex gap-6 justify-center items-center animate-pulse">
+          <img src={fsssLogo} alt="FSSS" className="h-20 md:h-24 object-contain" />
+          <img src={enfLogo} alt="Enfermagem" className="h-20 md:h-24 object-contain" />
         </div>
         
         <div className="space-y-4">

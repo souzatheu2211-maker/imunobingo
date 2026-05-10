@@ -16,13 +16,15 @@ import {
   Shield,
   Crosshair,
   Target,
-  Microscope
+  Microscope,
+  Briefcase
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import Credits from '@/components/Credits';
 import enfLogo from '@/assets/enf.png';
 import fsssLogo from '@/assets/fsss.png';
 import loginBg from '@/assets/login-bg.png';
+import { cn } from '@/lib/utils';
 
 const FloatingIcon = ({ children, className, delay = "0s" }: { children: React.ReactNode, className?: string, delay?: string }) => (
   <div 
@@ -40,6 +42,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [course, setCourse] = useState('');
+  const [role, setRole] = useState<'student' | 'professor'>('student');
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +54,11 @@ const Login = () => {
           email,
           password,
           options: {
-            data: { full_name: fullName, course: course }
+            data: { 
+              full_name: fullName, 
+              course: role === 'student' ? course : 'Professor',
+              role: role 
+            }
           }
         });
         if (error) throw error;
@@ -60,7 +67,8 @@ const Login = () => {
           await supabase.from('profiles').insert({
             id: data.user.id,
             full_name: fullName,
-            course: course
+            course: role === 'student' ? course : 'Professor',
+            is_admin: role === 'professor' || email === 'theu@imuno.com'
           });
         }
         showSuccess("Cadastro realizado! Verifique seu e-mail.");
@@ -114,6 +122,31 @@ const Login = () => {
           </p>
         </CardHeader>
         <CardContent className="pt-4">
+          {isRegister && (
+            <div className="flex gap-2 mb-4">
+              <button 
+                type="button"
+                onClick={() => setRole('student')}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border",
+                  role === 'student' ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-slate-500"
+                )}
+              >
+                Estudante
+              </button>
+              <button 
+                type="button"
+                onClick={() => setRole('professor')}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border",
+                  role === 'professor' ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-slate-500"
+                )}
+              >
+                Professor
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleAuth} className="space-y-3">
             {isRegister && (
               <>
@@ -127,16 +160,28 @@ const Login = () => {
                     required
                   />
                 </div>
-                <div className="relative">
-                  <GraduationCap className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                  <Input 
-                    placeholder="Curso" 
-                    className="pl-9 h-10 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600"
-                    value={course}
-                    onChange={(e) => setCourse(e.target.value)}
-                    required
-                  />
-                </div>
+                {role === 'student' && (
+                  <div className="relative">
+                    <GraduationCap className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <Input 
+                      placeholder="Curso" 
+                      className="pl-9 h-10 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600"
+                      value={course}
+                      onChange={(e) => setCourse(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
+                {role === 'professor' && (
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <Input 
+                      disabled
+                      value="Docente / Administrador"
+                      className="pl-9 h-10 bg-white/5 border-white/10 text-slate-400 text-sm cursor-not-allowed"
+                    />
+                  </div>
+                )}
               </>
             )}
             <div className="relative">

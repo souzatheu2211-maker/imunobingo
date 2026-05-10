@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, ShieldAlert } from 'lucide-react';
+import { Plus, ShieldAlert } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
 const Admin = () => {
@@ -21,8 +21,13 @@ const Admin = () => {
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-      setIsAdmin(data?.is_admin || false);
+      // Bypass para o email do administrador principal
+      if (user.email === 'theu@imuno.com') {
+        setIsAdmin(true);
+      } else {
+        const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+        setIsAdmin(data?.is_admin || false);
+      }
     }
     setLoading(false);
   };
@@ -44,7 +49,7 @@ const Admin = () => {
     }
   };
 
-  if (loading) return <div className="text-white">Verificando permissões...</div>;
+  if (loading) return <div className="text-white text-center py-20">Verificando permissões...</div>;
 
   if (!isAdmin) {
     return (

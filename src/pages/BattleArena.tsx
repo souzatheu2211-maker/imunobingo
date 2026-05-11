@@ -23,8 +23,6 @@ const BattleArena = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const userId = localStorage.getItem('imuno_user_id'); // Assumindo que o ID do usuário está salvo
-
   useEffect(() => {
     const setup = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -38,6 +36,7 @@ const BattleArena = () => {
       setPlayers(playersData || []);
       
       const me = playersData?.find(p => p.user_id === user.id);
+      if (!me) return navigate('/battle');
       setMyPlayer(me);
 
       if (roomData.status === 'playing') {
@@ -68,7 +67,6 @@ const BattleArena = () => {
           }
           return [...prev, payload.new];
         });
-        if (payload.new.user_id === myPlayer?.user_id) setMyPlayer(payload.new);
       })
       .subscribe();
 
@@ -79,8 +77,8 @@ const BattleArena = () => {
     if (room?.status === 'playing' && timeLeft > 0 && !answered) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !answered) {
-      handleAnswer(-1); // Tempo esgotado
+    } else if (timeLeft === 0 && !answered && room?.status === 'playing') {
+      handleAnswer(-1);
     }
   }, [timeLeft, room?.status, answered]);
 
@@ -90,12 +88,11 @@ const BattleArena = () => {
   };
 
   const handleAnswer = async (index: number) => {
-    if (answered) return;
+    if (answered || !myPlayer) return;
     setAnswered(true);
     const isCorrect = index === currentQuestion?.answer;
     const responseTime = (10 - timeLeft) * 1000;
 
-    // Registrar resposta
     await supabase.from('battle_answers').insert({
       battle_room_id: roomId,
       player_id: myPlayer.id,
@@ -108,7 +105,6 @@ const BattleArena = () => {
       const speedBonus = Math.floor(timeLeft * 2);
       const damage = myPlayer.attack + speedBonus;
       
-      // Causar dano a todos os outros
       const others = players.filter(p => p.id !== myPlayer.id && p.hp > 0);
       for (const other of others) {
         const newHp = Math.max(0, other.hp - damage);
@@ -124,13 +120,7 @@ const BattleArena = () => {
       showError("Erro de Defesa!");
     }
 
-    // Verificar se todos responderam ou tempo acabou para avançar
-    checkNextRound();
-  };
-
-  const checkNextRound = async () => {
-    // Lógica simplificada: o host avança após 12 segundos ou se todos responderem
-    if (room.host_id === myPlayer.id) {
+    if (room.host_id === myPlayer.user_id) {
       setTimeout(async () => {
         const nextIndex = room.current_question_index + 1;
         if (nextIndex < BATTLE_QUESTIONS.length) {
@@ -139,16 +129,14 @@ const BattleArena = () => {
           await supabase.from('battle_rooms').update({ status: 'finished' }).eq('id', roomId);
           confetti();
         }
-      }, 3000);
+      }, 4000);
     }
   };
 
-  if (loading) return <div className="text-white text-center py-20">Entrando na Arena...</div>;
+  if (loading || !room || !myPlayer) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Entrando na Arena...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700">
-      
-      {/* Coluna Jogadores */}
+    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700 p-4 md:p-8">
       <div className="lg:col-span-4 space-y-4">
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Combatentes</h2>
         <div className="space-y-3">
@@ -183,7 +171,6 @@ const BattleArena = () => {
           ))}
         </div>
 
-        {/* Log de Batalha */}
         <Card className="bg-slate-900/50 border-white/10 rounded-2xl h-40 overflow-hidden">
           <div className="p-3 border-b border-white/5 bg-white/5 flex items-center gap-2">
             <Activity className="w-3 h-3 text-blue-500" />
@@ -200,7 +187,6 @@ const BattleArena = () => {
         </Card>
       </div>
 
-      {/* Coluna Arena */}
       <div className="lg:col-span-8 space-y-6">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">
@@ -229,7 +215,7 @@ const BattleArena = () => {
               <h2 className="text-3xl font-black text-white">Aguardando Jogadores</h2>
               <p className="text-slate-400">A batalha começará assim que o host autorizar.</p>
             </div>
-            {room.host_id === myPlayer?.id && (
+            {room.host_id === myPlayer?.user_id && (
               <Button onClick={startBattle} size="lg" className="bg-blue-600 hover:bg-blue-500 font-black px-12 h-16 rounded-2xl shadow-xl shadow-blue-900/20">
                 INICIAR COMBATE
               </Button>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldAlert, PlusCircle, LogIn, User, Zap } from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
 import { cn } from '@/lib/utils';
 
 const BattleLobby = () => {
@@ -32,7 +32,11 @@ const BattleLobby = () => {
 
       const { data: room, error: roomError } = await supabase
         .from('battle_rooms')
-        .insert({ code, status: 'waiting' })
+        .insert({ 
+          code, 
+          status: 'waiting',
+          host_id: user.id // Definindo o host aqui
+        })
         .select()
         .single();
 
@@ -108,7 +112,6 @@ const BattleLobby = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Seleção de Classe */}
         <div className="space-y-4">
           <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Selecione sua Célula</h2>
           <div className="grid grid-cols-1 gap-3">
@@ -136,7 +139,6 @@ const BattleLobby = () => {
           </div>
         </div>
 
-        {/* Ações */}
         <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl h-fit">
           <CardHeader>
             <CardTitle className="text-white text-xl font-black">Acesso à Arena</CardTitle>

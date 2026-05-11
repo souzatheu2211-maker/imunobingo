@@ -26,7 +26,8 @@ import {
   HelpCircle,
   Split,
   Lightbulb,
-  Repeat
+  Repeat,
+  ShieldCheck
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -37,6 +38,8 @@ const PRIZES = [
   20000, 30000, 50000, 100000, 200000, 
   300000, 500000, 700000, 900000, 1000000
 ];
+
+const CHECKPOINTS = [4, 9]; // Índices das perguntas 5 e 10
 
 const MillionaireGame = () => {
   const { id: roomId } = useParams();
@@ -50,7 +53,6 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
-  // Estados das Ajudas
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
   const [usedTip, setUsedTip] = useState(false);
@@ -113,8 +115,11 @@ const MillionaireGame = () => {
       if (isCorrect) {
         newValue = PRIZES[room.current_question_index];
       } else {
-        if (room.current_question_index >= 10) newValue = 200000;
-        else if (room.current_question_index >= 5) newValue = 10000;
+        // Lógica de Checkpoint:
+        // Se errou na Q6-Q10 (índices 5-9), garante R$ 10.000 (índice 4)
+        // Se errou na Q11-Q15 (índices 10-14), garante R$ 200.000 (índice 9)
+        if (room.current_question_index > 9) newValue = PRIZES[9];
+        else if (room.current_question_index > 4) newValue = PRIZES[4];
         else newValue = 0;
       }
 
@@ -187,7 +192,6 @@ const MillionaireGame = () => {
     }
   };
 
-  // Lógica das Ajudas
   const use5050 = () => {
     if (used5050 || myPlayer?.is_eliminated || room?.phase !== 'question') return;
     setUsed5050(true);
@@ -295,12 +299,19 @@ const MillionaireGame = () => {
             {[...PRIZES].reverse().map((prize, idx) => {
               const levelIdx = PRIZES.length - 1 - idx;
               const isCurrent = room.current_question_index === levelIdx;
+              const isCheckpoint = CHECKPOINTS.includes(levelIdx);
+              
               return (
                 <div key={idx} className={cn(
-                  "flex justify-between px-4 py-1.5 rounded-xl text-[11px] font-black",
-                  isCurrent ? "bg-yellow-600 text-white scale-105 shadow-lg" : "text-slate-500"
+                  "flex justify-between px-4 py-1.5 rounded-xl text-[11px] font-black transition-all",
+                  isCurrent ? "bg-yellow-600 text-white scale-105 shadow-lg z-10" : 
+                  isCheckpoint ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/10" :
+                  "text-slate-500"
                 )}>
-                  <span>{levelIdx + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <span>{levelIdx + 1}</span>
+                    {isCheckpoint && <ShieldCheck className="w-3 h-3" />}
+                  </div>
                   <span>R$ {prize.toLocaleString()}</span>
                 </div>
               );

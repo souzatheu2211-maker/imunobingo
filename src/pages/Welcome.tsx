@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, Sparkles, Microscope } from 'lucide-react';
 import Credits from '@/components/Credits';
 import loginBg from '@/assets/login-bg.png';
 import enfLogo from '@/assets/enf.png';
@@ -25,11 +25,19 @@ const Welcome = () => {
           <img src={enfLogo} alt="Enfermagem" className="h-32 md:h-48 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]" />
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter">
             IMUNO<span className="text-violet-500 drop-shadow-[0_0_20px_rgba(124,58,237,0.5)]">BINGO</span>
           </h1>
-          <p className="text-lg md:text-2xl text-slate-200 font-bold italic leading-tight max-w-md mx-auto">
+          
+          <div className="bg-violet-500/10 border border-violet-500/20 px-6 py-3 rounded-2xl backdrop-blur-md animate-pulse">
+            <p className="text-violet-300 text-sm md:text-lg font-black uppercase tracking-widest flex items-center justify-center gap-2">
+              <Microscope className="w-5 h-5" />
+              Preparado para adentrar aos desafios do laboratório do Dr. Micróbios?
+            </p>
+          </div>
+
+          <p className="text-lg md:text-2xl text-slate-200 font-bold italic leading-tight max-w-md mx-auto pt-2">
             "A imunologia é a arte de distinguir o 'eu' do 'outro' para proteger a essência da vida."
           </p>
         </div>

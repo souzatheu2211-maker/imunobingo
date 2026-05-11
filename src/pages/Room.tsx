@@ -21,7 +21,8 @@ import {
   Sparkles, 
   History,
   MessageSquare,
-  CheckCircle2
+  CheckCircle2,
+  Crown
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -67,7 +68,6 @@ const Room = () => {
       }
       setMyPlayer(me);
 
-      // Buscar todas as marcações da sala para o ranking
       const { data: allMarksData } = await supabase.from('marks').select('*').eq('room_id', roomId);
       setAllMarks(allMarksData || []);
 
@@ -143,6 +143,7 @@ const Room = () => {
   const isHost = room?.host_id === playerId;
 
   const startGame = async () => {
+    if (!isHost) return;
     if (players.length < 1) {
       showError("Aguardando jogadores...");
       return;
@@ -151,6 +152,7 @@ const Room = () => {
   };
 
   const drawCard = async () => {
+    if (!isHost) return;
     const drawnAnswers = drawHistory.map(d => d.answer);
     const available = IMMUNOLOGY_TERMS.filter(t => !drawnAnswers.includes(t.answer));
     
@@ -235,6 +237,7 @@ const Room = () => {
   };
 
   const resetGame = async () => {
+    if (!isHost) return;
     await supabase.from('draws').delete().eq('room_id', roomId);
     await supabase.from('marks').delete().eq('room_id', roomId);
     await supabase.from('rooms').update({ status: 'waiting' }).eq('id', roomId);
@@ -420,6 +423,7 @@ const Room = () => {
                     return marksB - marksA;
                   }).map((p, idx) => {
                     const marksCount = allMarks.filter(m => m.player_id === p.id).length;
+                    const isPlayerHost = room.host_id === p.id;
                     return (
                       <div key={p.id} className={cn(
                         "flex items-center justify-between p-5 transition-all",
@@ -431,16 +435,24 @@ const Room = () => {
                             idx === 0 ? "text-yellow-500" : "text-slate-600"
                           )}>{idx + 1}º</span>
                           <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center text-base font-black shadow-inner border",
+                            "w-10 h-10 rounded-xl flex items-center justify-center text-base font-black shadow-inner border relative",
                             p.id === playerId ? "bg-violet-600 border-violet-400 text-white" : "bg-slate-800 border-white/5 text-slate-400"
                           )}>
                             {p.name[0].toUpperCase()}
+                            {isPlayerHost && (
+                              <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-0.5 border-2 border-slate-950">
+                                <Crown className="w-2.5 h-2.5 text-slate-950" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex flex-col">
-                            <span className={cn("font-black text-xs tracking-tight", p.id === playerId ? "text-white" : "text-slate-300")}>
-                              {p.name} {room.host_id === p.id && "👑"}
+                            <span className={cn("font-black text-xs tracking-tight flex items-center gap-1", p.id === playerId ? "text-white" : "text-slate-300")}>
+                              {p.name}
                             </span>
-                            {p.id === playerId && <span className="text-[8px] text-violet-400 font-black uppercase tracking-widest">Você</span>}
+                            <div className="flex items-center gap-1.5">
+                              {p.id === playerId && <span className="text-[8px] text-violet-400 font-black uppercase tracking-widest">Você</span>}
+                              {isPlayerHost && <span className="text-[8px] text-yellow-500 font-black uppercase tracking-widest">Host</span>}
+                            </div>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">

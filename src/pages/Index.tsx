@@ -96,12 +96,12 @@ const Index = () => {
   return (
     <div className="relative min-h-[80vh] flex items-center justify-center p-4">
       {/* Imagem Decorativa de Fundo */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none overflow-hidden">
         <img 
           src={fagocitoseImg} 
           alt="Fagocitose" 
-          className="w-full max-w-4xl object-contain mix-blend-lighten animate-pulse"
-          style={{ animationDuration: '8s' }}
+          className="w-full max-w-5xl object-contain mix-blend-screen animate-pulse"
+          style={{ animationDuration: '10s' }}
         />
       </div>
 

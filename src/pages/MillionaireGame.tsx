@@ -11,16 +11,10 @@ import {
   Trophy, 
   Timer, 
   Users, 
-  BarChart3, 
-  Copy, 
-  RotateCcw, 
-  CheckCircle2, 
-  XCircle,
+  LogOut, 
+  Monitor, 
+  Sparkles, 
   AlertTriangle,
-  Sparkles,
-  LogOut,
-  Monitor,
-  Zap,
   Eye
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
@@ -41,6 +35,7 @@ const MillionaireGame = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(20);
   const [answered, setAnswered] = useState(false);
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lifelines, setLifelines] = useState({
     fiftyFifty: true,
@@ -81,12 +76,16 @@ const MillionaireGame = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         if (payload.new && Object.keys(payload.new).length > 0) {
           setRoom(payload.new);
-          setTimeLeft(20);
-          setAnswered(false);
-          setRemovedOptions([]);
-          setLabStats(null);
-          setDoubleChanceActive(false);
-          setFirstChanceUsed(false);
+          // Se a pergunta mudou e show_answer é falso, reseta o estado local para a nova rodada
+          if (!payload.new.show_answer) {
+            setTimeLeft(20);
+            setAnswered(false);
+            setSelectedChoice(null);
+            setRemovedOptions([]);
+            setLabStats(null);
+            setDoubleChanceActive(false);
+            setFirstChanceUsed(false);
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -98,36 +97,22 @@ const MillionaireGame = () => {
     return () => { supabase.removeChannel(channel); };
   }, [roomId, navigate]);
 
+  // Cronômetro que não para ao responder
   useEffect(() => {
-    // O cronômetro continua rodando para todos, mesmo eliminados, para manter a sincronia visual
-    if (room?.status === 'playing' && timeLeft > 0 && !answered) {
+    if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !answered && room?.status === 'playing' && !myPlayer?.is_eliminated) {
-      handleAnswer('TIMEOUT');
+    } else if (timeLeft === 0 && !answered && room?.status === 'playing') {
+      processEndOfTurn();
     }
-  }, [timeLeft, room?.status, answered, myPlayer?.is_eliminated]);
+  }, [timeLeft, room?.status, room?.show_answer, answered]);
 
-  const startLevel = async () => {
-    if (!room) return;
-    await supabase.from('millionaire_rooms').update({ status: 'playing', current_question_index: 0, show_answer: false }).eq('id', roomId);
-    setRoom(prev => ({ ...prev, status: 'playing', current_question_index: 0 }));
-  };
-
-  const handleAnswer = async (choice: string) => {
-    if (answered || myPlayer?.is_eliminated) return;
-
-    const isCorrect = choice === currentQuestion.correct;
-
-    if (!isCorrect && doubleChanceActive && !firstChanceUsed) {
-      setFirstChanceUsed(true);
-      showError("Primeira chance falhou! Tente outra opção.");
-      setRemovedOptions(prev => [...prev, choice]);
-      return;
-    }
-
+  const processEndOfTurn = async () => {
+    if (answered || !myPlayer || myPlayer.is_eliminated) return;
     setAnswered(true);
-    let newValue = 0;
+
+    const isCorrect = selectedChoice === currentQuestion.correct;
+    let newValue = myPlayer.current_value;
     let eliminated = false;
 
     if (isCorrect) {
@@ -135,10 +120,11 @@ const MillionaireGame = () => {
       showSuccess("Resposta Correta!");
     } else {
       eliminated = true;
-      if (room.current_question_index > 9) newValue = 200000;
-      else if (room.current_question_index > 4) newValue = 10000;
+      // Patamares de segurança
+      if (room.current_question_index >= 10) newValue = 200000;
+      else if (room.current_question_index >= 5) newValue = 10000;
       else newValue = 0;
-      showError("Você foi eliminado!");
+      showError("Você errou e foi eliminado!");
     }
 
     await supabase.from('millionaire_players').update({
@@ -147,10 +133,13 @@ const MillionaireGame = () => {
       last_answered_index: room.current_question_index
     }).eq('id', myPlayer.id);
 
+    // O Host controla a transição de tela e avanço
     if (room.host_id === currentUserId) {
       await supabase.from('millionaire_rooms').update({ show_answer: true }).eq('id', roomId);
+      
       setTimeout(async () => {
         const { data: survivors } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('is_eliminated', false);
+        
         if (!survivors || survivors.length === 0) {
           await supabase.from('millionaire_rooms').update({ status: 'finished' }).eq('id', roomId);
           confetti();
@@ -160,15 +149,28 @@ const MillionaireGame = () => {
             await supabase.from('millionaire_rooms').update({ status: 'finished' }).eq('id', roomId);
             confetti();
           } else {
-            await supabase.from('millionaire_rooms').update({ current_question_index: nextIndex, show_answer: false }).eq('id', roomId);
+            await supabase.from('millionaire_rooms').update({ 
+              current_question_index: nextIndex, 
+              show_answer: false 
+            }).eq('id', roomId);
           }
         }
-      }, 4000);
+      }, 5000); // 5 segundos para verem o resultado antes de passar
     }
   };
 
+  const handleSelect = (choice: string) => {
+    if (answered || myPlayer?.is_eliminated || room?.show_answer) return;
+    setSelectedChoice(choice);
+  };
+
+  const startLevel = async () => {
+    if (!room) return;
+    await supabase.from('millionaire_rooms').update({ status: 'playing', current_question_index: 0, show_answer: false }).eq('id', roomId);
+  };
+
   const useFiftyFifty = () => {
-    if (!lifelines.fiftyFifty || answered || myPlayer?.is_eliminated) return;
+    if (!lifelines.fiftyFifty || answered || myPlayer?.is_eliminated || room?.show_answer) return;
     const options = ['A', 'B', 'C', 'D'].filter(o => o !== currentQuestion.correct);
     const toRemove = options.sort(() => 0.5 - Math.random()).slice(0, 2);
     setRemovedOptions(toRemove);
@@ -176,7 +178,7 @@ const MillionaireGame = () => {
   };
 
   const useStatistics = () => {
-    if (!lifelines.statistics || answered || myPlayer?.is_eliminated) return;
+    if (!lifelines.statistics || answered || myPlayer?.is_eliminated || room?.show_answer) return;
     const stats: any = { A: 5, B: 5, C: 5, D: 5 };
     const isAccurate = Math.random() < 0.8;
     const target = isAccurate ? currentQuestion.correct : ['A', 'B', 'C', 'D'].find(o => o !== currentQuestion.correct);
@@ -186,16 +188,17 @@ const MillionaireGame = () => {
   };
 
   const useDoubleChance = () => {
-    if (!lifelines.doubleChance || answered || myPlayer?.is_eliminated) return;
+    if (!lifelines.doubleChance || answered || myPlayer?.is_eliminated || room?.show_answer) return;
     setDoubleChanceActive(true);
     setLifelines(prev => ({ ...prev, doubleChance: false }));
-    showSuccess("Dupla Chance Ativada! Você pode errar uma vez.");
+    showSuccess("Dupla Chance Ativada!");
   };
 
   if (loading || !room || !myPlayer) return <div className="text-white text-center py-20">Sincronizando...</div>;
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
+      {/* Coluna de Prêmios e Jogadores */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5">
@@ -237,6 +240,7 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
+      {/* Área Principal do Jogo */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -278,16 +282,16 @@ const MillionaireGame = () => {
         ) : room.status === 'playing' ? (
           <div className="space-y-8">
             <div className="grid grid-cols-3 gap-4">
-              <Button disabled={!lifelines.fiftyFifty || answered || myPlayer.is_eliminated} onClick={useFiftyFifty} className={cn("h-16 rounded-2xl font-black border-2", lifelines.fiftyFifty && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-yellow-600" : "opacity-30 bg-slate-800")}>50/50</Button>
-              <Button disabled={!lifelines.statistics || answered || myPlayer.is_eliminated} onClick={useStatistics} className={cn("h-16 rounded-2xl font-black border-2", lifelines.statistics && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-blue-600" : "opacity-30 bg-slate-800")}>ESTATÍSTICAS</Button>
-              <Button disabled={!lifelines.doubleChance || answered || myPlayer.is_eliminated} onClick={useDoubleChance} className={cn("h-16 rounded-2xl font-black border-2", lifelines.doubleChance && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-emerald-600" : "opacity-30 bg-slate-800")}>DUPLA CHANCE</Button>
+              <Button disabled={!lifelines.fiftyFifty || room.show_answer || myPlayer.is_eliminated} onClick={useFiftyFifty} className={cn("h-16 rounded-2xl font-black border-2", lifelines.fiftyFifty && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-yellow-600" : "opacity-30 bg-slate-800")}>50/50</Button>
+              <Button disabled={!lifelines.statistics || room.show_answer || myPlayer.is_eliminated} onClick={useStatistics} className={cn("h-16 rounded-2xl font-black border-2", lifelines.statistics && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-blue-600" : "opacity-30 bg-slate-800")}>ESTATÍSTICAS</Button>
+              <Button disabled={!lifelines.doubleChance || room.show_answer || myPlayer.is_eliminated} onClick={useDoubleChance} className={cn("h-16 rounded-2xl font-black border-2", lifelines.doubleChance && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-emerald-600" : "opacity-30 bg-slate-800")}>DUPLA CHANCE</Button>
             </div>
 
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-yellow-500" />
-              <div className="absolute top-4 right-8 flex items-center gap-2 bg-yellow-600/20 px-4 py-1.5 rounded-full border border-yellow-500/20">
-                <Timer className="w-4 h-4 text-yellow-400" />
-                <span className="text-yellow-400 font-black text-lg">{timeLeft}s</span>
+              <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full border border-orange-500/30">
+                <Timer className="w-4 h-4 text-orange-600" />
+                <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight tracking-tight mt-4">
                 {currentQuestion.question}
@@ -309,17 +313,25 @@ const MillionaireGame = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(currentQuestion.options).map(([key, val]) => {
                 const isRemoved = removedOptions.includes(key);
+                const isSelected = selectedChoice === key;
+                const isCorrect = key === currentQuestion.correct;
+                
                 if (isRemoved) return <div key={key} className="h-20" />;
+                
                 return (
                   <Button
                     key={key}
-                    disabled={answered || myPlayer.is_eliminated}
-                    onClick={() => handleAnswer(key)}
+                    disabled={myPlayer.is_eliminated || room.show_answer}
+                    onClick={() => handleSelect(key)}
                     className={cn(
                       "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
-                      (answered || room.show_answer) && key === currentQuestion.correct ? "bg-emerald-600 border-emerald-400 text-white scale-105" :
-                      answered && key !== currentQuestion.correct ? "bg-white/5 border-white/10 text-slate-500" :
-                      "bg-white/5 border-white/10 text-white hover:bg-yellow-600"
+                      // Se o tempo acabou e estamos mostrando a resposta
+                      room.show_answer && isCorrect ? "bg-emerald-600 border-emerald-400 text-white scale-105" :
+                      room.show_answer && isSelected && !isCorrect ? "bg-red-600 border-red-400 text-white" :
+                      // Se o jogador selecionou mas o tempo ainda não acabou
+                      !room.show_answer && isSelected ? "bg-yellow-600 border-yellow-400 text-white shadow-lg" :
+                      // Estado padrão
+                      "bg-white/5 border-white/10 text-white hover:bg-white/10"
                     )}
                   >
                     <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>

@@ -35,7 +35,6 @@ const MillionairePresentation = () => {
 
     fetchData();
 
-    // Inscrição Realtime robusta
     const channel = supabase.channel(`presentation_room_${roomId}`)
       .on('postgres_changes', { 
         event: '*', 
@@ -43,10 +42,10 @@ const MillionairePresentation = () => {
         table: 'millionaire_rooms', 
         filter: `id=eq.${roomId}` 
       }, (payload) => {
-        console.log("Mudança na sala detectada:", payload.new);
         setRoom(payload.new);
-        // Reinicia o cronômetro sempre que a pergunta mudar ou o jogo começar
-        setTimeLeft(20);
+        if (!payload.new.show_answer) {
+          setTimeLeft(20);
+        }
       })
       .on('postgres_changes', { 
         event: '*', 
@@ -54,7 +53,6 @@ const MillionairePresentation = () => {
         table: 'millionaire_players', 
         filter: `room_id=eq.${roomId}` 
       }, (payload) => {
-        console.log("Mudança nos jogadores detectada:", payload);
         if (payload.eventType === 'INSERT') {
           setPlayers(prev => [...prev, payload.new]);
         } else if (payload.eventType === 'UPDATE') {
@@ -63,16 +61,13 @@ const MillionairePresentation = () => {
           setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
         }
       })
-      .subscribe((status) => {
-        console.log("Status da conexão Realtime:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [roomId]);
 
-  // Lógica do cronômetro sincronizada com o status da sala
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
@@ -92,7 +87,6 @@ const MillionairePresentation = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 p-12 flex flex-col gap-12 overflow-hidden">
-      {/* Header Gigante */}
       <div className="flex justify-between items-center">
         <div className="space-y-2">
           <h1 className="text-6xl font-black text-white tracking-tighter">
@@ -113,10 +107,10 @@ const MillionairePresentation = () => {
           
           <div className={cn(
             "p-8 rounded-[2.5rem] border-4 flex items-center gap-6 transition-all duration-500",
-            timeLeft <= 5 ? "bg-red-600/20 border-red-500 animate-pulse" : "bg-yellow-600/10 border-yellow-500/30"
+            timeLeft <= 5 ? "bg-red-600/20 border-red-500 animate-pulse" : "bg-orange-600/10 border-orange-500/30"
           )}>
-            <Timer className={cn("w-12 h-12", timeLeft <= 5 ? "text-red-500" : "text-yellow-500")} />
-            <span className={cn("text-7xl font-black tabular-nums", timeLeft <= 5 ? "text-red-500" : "text-yellow-500")}>
+            <Timer className={cn("w-12 h-12", timeLeft <= 5 ? "text-red-500" : "text-orange-600")} />
+            <span className={cn("text-7xl font-black tabular-nums", timeLeft <= 5 ? "text-red-500" : "text-orange-600")}>
               {timeLeft}s
             </span>
           </div>
@@ -124,7 +118,6 @@ const MillionairePresentation = () => {
       </div>
 
       <div className="grid grid-cols-12 gap-12 flex-1">
-        {/* Área da Pergunta */}
         <div className="col-span-8 flex flex-col gap-8">
           {room.status === 'playing' ? (
             <div className="space-y-8 animate-in zoom-in duration-700">
@@ -173,7 +166,6 @@ const MillionairePresentation = () => {
           )}
         </div>
 
-        {/* Ranking Lateral */}
         <div className="col-span-4">
           <Card className="bg-white/5 border-white/10 rounded-[3rem] h-full overflow-hidden backdrop-blur-xl border-t-white/20 shadow-2xl">
             <div className="p-8 bg-white/5 border-b border-white/5 flex items-center justify-between">
@@ -218,12 +210,6 @@ const MillionairePresentation = () => {
                   </div>
                 </div>
               ))}
-              
-              {players.length === 0 && (
-                <div className="text-center py-20 text-slate-600 italic font-bold">
-                  Nenhum candidato conectado...
-                </div>
-              )}
             </div>
           </Card>
         </div>

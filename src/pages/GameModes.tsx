@@ -1,13 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Gamepad2, ShieldAlert, Microscope, ChevronRight, Sparkles } from 'lucide-react';
+import { Gamepad2, ShieldAlert, Microscope, ChevronRight, Sparkles, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const GameModes = () => {
   const navigate = useNavigate();
 
   const modes = [
+    {
+      id: 'millionaire',
+      title: 'Imuno Milionário',
+      description: 'O desafio supremo de conhecimentos. Você consegue chegar ao 1 Milhão?',
+      icon: Trophy,
+      color: 'yellow',
+      path: '/millionaire'
+    },
     {
       id: 'bingo',
       title: 'Bingo Multiplayer',
@@ -45,7 +53,7 @@ const GameModes = () => {
         <p className="text-slate-400 text-lg font-medium max-w-2xl mx-auto">Escolha sua estratégia e prepare-se para a imersão no laboratório.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {modes.map((mode) => (
           <Card 
             key={mode.id}

@@ -17,6 +17,8 @@ import GameModes from "./pages/GameModes";
 import BattleLobby from "./pages/BattleLobby";
 import BattleArena from "./pages/BattleArena";
 import Diagnosis from "./pages/Diagnosis";
+import MillionaireLobby from "./pages/MillionaireLobby";
+import MillionaireGame from "./pages/MillionaireGame";
 import NotFound from "./pages/NotFound";
 import Credits from "./components/Credits";
 import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles, LayoutGrid, ShieldAlert, Microscope } from "lucide-react";
@@ -27,7 +29,9 @@ const queryClient = new QueryClient();
 
 const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boolean }) => {
   const location = useLocation();
-  const isGame = location.pathname.startsWith('/room/') || location.pathname.startsWith('/battle/');
+  const isGame = location.pathname.startsWith('/room/') || 
+                 location.pathname.startsWith('/battle/') || 
+                 location.pathname.startsWith('/millionaire/');
 
   const navItems = [
     { path: '/home', icon: HomeIcon, label: 'Início' },
@@ -187,6 +191,9 @@ const App = () => {
             
             <Route path="/battle" element={session ? <Layout isAdmin={isAdmin}><BattleLobby /></Layout> : <Navigate to="/login" />} />
             <Route path="/battle/:id" element={session ? <Layout isAdmin={isAdmin}><BattleArena /></Layout> : <Navigate to="/login" />} />
+            
+            <Route path="/millionaire" element={session ? <Layout isAdmin={isAdmin}><MillionaireLobby /></Layout> : <Navigate to="/login" />} />
+            <Route path="/millionaire/:id" element={session ? <Layout isAdmin={isAdmin}><MillionaireGame /></Layout> : <Navigate to="/login" />} />
             
             <Route path="/diagnosis" element={session ? <Layout isAdmin={isAdmin}><Diagnosis /></Layout> : <Navigate to="/login" />} />
             

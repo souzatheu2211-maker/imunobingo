@@ -55,18 +55,51 @@ const Home = () => {
         
         if (profileData) {
           setProfile(profileData);
-          const { data: playerStats } = await supabase
+          
+          // 1. Bingo Stats (via nome)
+          const { data: bingoStats } = await supabase
             .from('players')
             .select('points')
             .eq('name', profileData.full_name);
 
-          if (playerStats) {
-            const totalPoints = playerStats.reduce((acc, curr) => acc + (curr.points || 0), 0);
-            const gamesPlayed = playerStats.length;
-            const wins = playerStats.filter(p => p.points >= 100).length;
-            const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
-            setStats({ gamesPlayed, totalPoints, winRate });
-          }
+          // 2. Battle Stats (via user_id)
+          const { data: battleStats } = await supabase
+            .from('battle_players')
+            .select('hp, max_hp')
+            .eq('user_id', user.id);
+
+          // 3. Millionaire Stats (via user_id)
+          const { data: millionaireStats } = await supabase
+            .from('millionaire_players')
+            .select('current_value')
+            .eq('user_id', user.id);
+
+          // 4. Diagnosis Stats (via LocalStorage)
+          const diagScore = parseInt(localStorage.getItem('imuno_diagnosis_score') || '0');
+          const diagResults = JSON.parse(localStorage.getItem('imuno_diagnosis_results') || '{}');
+          const diagGames = Object.keys(diagResults).length;
+          const diagWins = Object.values(diagResults).filter(r => r === 'success').length;
+
+          // Agregação de Pontos (XP)
+          const bingoXP = bingoStats?.reduce((acc, curr) => acc + (curr.points || 0), 0) || 0;
+          const millionaireXP = millionaireStats?.reduce((acc, curr) => acc + (curr.current_value || 0), 0) || 0;
+          // Batalha: Ganha 50 XP por participação (já que não tem coluna de pontos direta)
+          const battleXP = (battleStats?.length || 0) * 50;
+          
+          const totalPoints = bingoXP + millionaireXP + battleXP + diagScore;
+
+          // Agregação de Partidas
+          const totalGames = (bingoStats?.length || 0) + (battleStats?.length || 0) + (millionaireStats?.length || 0) + diagGames;
+
+          // Cálculo de Vitórias
+          const bingoWins = bingoStats?.filter(p => p.points >= 100).length || 0;
+          const battleWins = battleStats?.filter(p => p.hp > 0).length || 0;
+          const millionaireWins = millionaireStats?.filter(p => p.current_value >= 50000).length || 0;
+          
+          const totalWins = bingoWins + battleWins + millionaireWins + diagWins;
+          const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+
+          setStats({ gamesPlayed: totalGames, totalPoints, winRate });
         }
       }
       setLoading(false);
@@ -90,7 +123,6 @@ const Home = () => {
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Hero Section sem fundo quadrado */}
       <div className="relative py-8">
         <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
           <div className="relative">
@@ -123,9 +155,9 @@ const Home = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {[
-          { icon: Trophy, color: "blue", val: stats.gamesPlayed, label: "Partidas" },
-          { icon: Medal, color: "emerald", val: stats.totalPoints, label: "Total XP" },
-          { icon: Target, color: "violet", val: `${stats.winRate}%`, label: "Vitórias" },
+          { icon: Trophy, color: "blue", val: stats.gamesPlayed, label: "Total Jogos" },
+          { icon: Medal, color: "emerald", val: stats.totalPoints.toLocaleString(), label: "Total XP" },
+          { icon: Target, color: "violet", val: `${stats.winRate}%`, label: "Taxa de Vitória" },
           { icon: Activity, color: "pink", val: "Ativo", label: "Status", pulse: true }
         ].map((s, i) => (
           <div key={i} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all group">

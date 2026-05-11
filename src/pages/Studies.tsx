@@ -1,21 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, ExternalLink, Search, Sparkles } from 'lucide-react';
+import { FileText, ExternalLink, Search, Sparkles, Trash2, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { showError, showSuccess } from '@/utils/toast';
+import { useNavigate } from 'react-router-dom';
 
 const Studies = () => {
   const [materials, setMaterials] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchMaterials();
+    checkAdmin();
   }, []);
+
+  const checkAdmin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      setIsAdmin(data?.is_admin || false);
+    }
+  };
 
   const fetchMaterials = async () => {
     const { data } = await supabase.from('study_materials').select('*').order('created_at', { ascending: false });
     if (data) setMaterials(data);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este material?")) return;
+    
+    const { error } = await supabase.from('study_materials').delete().eq('id', id);
+    if (error) showError(error.message);
+    else {
+      showSuccess("Material excluído!");
+      fetchMaterials();
+    }
   };
 
   const filtered = materials.filter(m => 
@@ -50,7 +74,29 @@ const Studies = () => {
       {/* Grid de Materiais Clean */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((item) => (
-          <Card key={item.id} className="bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20">
+          <Card key={item.id} className="bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20 relative">
+            {/* Botões de Admin (Apenas visíveis para admins) */}
+            {isAdmin && (
+              <div className="absolute top-4 right-4 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-8 w-8 bg-white/10 hover:bg-violet-600 text-white rounded-lg"
+                  onClick={() => navigate('/admin')}
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-8 w-8 bg-white/10 hover:bg-red-600 text-white rounded-lg"
+                  onClick={() => handleDelete(item.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+
             <CardContent className="p-8 space-y-6">
               <div className="flex items-start justify-between">
                 <div className="bg-violet-600/20 w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-violet-500/20">

@@ -9,7 +9,7 @@ export interface MillionaireQuestion {
 }
 
 export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
-  // EASY (1-12)
+  // EASY (1-22)
   {
     id: "e1",
     difficulty: "easy",
@@ -118,8 +118,98 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     explanation: "SI combate vírus, bactérias, fungos, protozoários e helmintos.",
     tip: "O sistema imune é polivalente."
   },
+  {
+    id: "e13",
+    difficulty: "easy",
+    question: "Qual célula é a principal responsável pela fagocitose inicial em infecções agudas?",
+    options: { A: "Linfócito B", B: "Neutrófilo", C: "Plasmócito", D: "Linfócito T CD4" },
+    correct: "B",
+    explanation: "Neutrófilos são fagócitos rápidos e predominam na inflamação aguda.",
+    tip: "É a célula mais numerosa do sangue."
+  },
+  {
+    id: "e14",
+    difficulty: "easy",
+    question: "Qual estrutura é considerada uma barreira física da imunidade inata?",
+    options: { A: "Pele", B: "Anticorpo IgG", C: "Linfócito T", D: "MHC I" },
+    correct: "A",
+    explanation: "Pele e mucosas são barreiras físicas importantes.",
+    tip: "O maior órgão do corpo humano."
+  },
+  {
+    id: "e15",
+    difficulty: "easy",
+    question: "Qual célula libera histamina em reações alérgicas?",
+    options: { A: "Neutrófilo", B: "Mastócito", C: "NK", D: "Monócito" },
+    correct: "B",
+    explanation: "Mastócitos liberam histamina e participam de alergias.",
+    tip: "Célula tecidual com muitos grânulos."
+  },
+  {
+    id: "e16",
+    difficulty: "easy",
+    question: "A resposta imune adaptativa é caracterizada principalmente por:",
+    options: { A: "Resposta imediata e inespecífica", B: "Memória e alta especificidade", C: "Apenas fagocitose", D: "Barreiras físicas" },
+    correct: "B",
+    explanation: "Adaptativa é específica e gera memória.",
+    tip: "Pense no que as vacinas criam."
+  },
+  {
+    id: "e17",
+    difficulty: "easy",
+    question: "Qual célula é mais associada à defesa contra parasitas (helmintos)?",
+    options: { A: "Eosinófilo", B: "Neutrófilo", C: "Hemácia", D: "Plaqueta" },
+    correct: "A",
+    explanation: "Eosinófilos atacam parasitas e participam de alergias.",
+    tip: "Seus grânulos coram-se com eosina."
+  },
+  {
+    id: "e18",
+    difficulty: "easy",
+    question: "Qual órgão linfóide é responsável pela maturação dos linfócitos B em humanos?",
+    options: { A: "Baço", B: "Medula óssea", C: "Timo", D: "Linfonodo" },
+    correct: "B",
+    explanation: "Linfócitos B amadurecem na medula óssea.",
+    tip: "Localizada no interior dos ossos."
+  },
+  {
+    id: "e19",
+    difficulty: "easy",
+    question: "Qual imunoglobulina é a primeira produzida na resposta primária?",
+    options: { A: "IgG", B: "IgE", C: "IgM", D: "IgA" },
+    correct: "C",
+    explanation: "IgM é a primeira a aparecer na resposta primária.",
+    tip: "É um pentâmero gigante."
+  },
+  {
+    id: "e20",
+    difficulty: "easy",
+    question: "Qual imunoglobulina é mais encontrada em secreções (saliva, leite, mucosas)?",
+    options: { A: "IgG", B: "IgA", C: "IgD", D: "IgM" },
+    correct: "B",
+    explanation: "IgA protege mucosas.",
+    tip: "Presente no colostro materno."
+  },
+  {
+    id: "e21",
+    difficulty: "easy",
+    question: "Qual célula atua destruindo células infectadas sem necessidade de sensibilização prévia?",
+    options: { A: "Linfócito B", B: "NK", C: "Linfócito T CD4", D: "Plasmócito" },
+    correct: "B",
+    explanation: "NK reconhece e mata células infectadas/tumorais.",
+    tip: "Natural Killer."
+  },
+  {
+    id: "e22",
+    difficulty: "easy",
+    question: "O baço filtra principalmente:",
+    options: { A: "Linfa", B: "Sangue", C: "Líquido sinovial", D: "Suco gástrico" },
+    correct: "B",
+    explanation: "O baço filtra sangue e remove antígenos sanguíneos.",
+    tip: "É o maior órgão linfóide secundário."
+  },
 
-  // MEDIUM (13-30)
+  // MEDIUM (1-28)
   {
     id: "m1",
     difficulty: "medium",
@@ -282,8 +372,98 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     explanation: "CD8 destrói células infectadas via MHC I.",
     tip: "Linfócito T Citotóxico."
   },
+  {
+    id: "m19",
+    difficulty: "medium",
+    question: "Qual molécula apresenta antígenos para linfócitos T CD8?",
+    options: { A: "MHC I", B: "MHC II", C: "IgG", D: "PRR" },
+    correct: "A",
+    explanation: "MHC I apresenta para T CD8.",
+    tip: "Presente em todas as células nucleadas."
+  },
+  {
+    id: "m20",
+    difficulty: "medium",
+    question: "Qual molécula apresenta antígenos para linfócitos T CD4?",
+    options: { A: "MHC I", B: "MHC II", C: "IgA", D: "Complemento C5" },
+    correct: "B",
+    explanation: "MHC II apresenta para T CD4.",
+    tip: "Presente em APCs profissionais."
+  },
+  {
+    id: "m21",
+    difficulty: "medium",
+    question: "Qual célula é mais importante na apresentação de antígeno para iniciar resposta adaptativa?",
+    options: { A: "Célula dendrítica", B: "Hemácia", C: "Plaqueta", D: "Basófilo" },
+    correct: "A",
+    explanation: "Células dendríticas são APCs principais.",
+    tip: "Possui prolongamentos em forma de braços."
+  },
+  {
+    id: "m22",
+    difficulty: "medium",
+    question: "Qual citocina é importante na ativação e proliferação de linfócitos T?",
+    options: { A: "IL-2", B: "IL-10", C: "Histamina", D: "IgE" },
+    correct: "A",
+    explanation: "IL-2 estimula crescimento e proliferação de linfócitos T.",
+    tip: "Fator de crescimento de células T."
+  },
+  {
+    id: "m23",
+    difficulty: "medium",
+    question: "A principal função do sistema complemento é:",
+    options: { A: "Produzir anticorpos", B: "Aumentar fagocitose e lise microbiana", C: "Produzir células T", D: "Gerar memória imunológica" },
+    correct: "B",
+    explanation: "Complemento opsoniza e forma MAC para lise.",
+    tip: "Uma cascata de proteínas plasmáticas."
+  },
+  {
+    id: "m24",
+    difficulty: "medium",
+    question: "O que significa “opsonização”?",
+    options: { A: "Produção de IgE", B: "Marcação do patógeno para facilitar fagocitose", C: "Eliminação de linfócitos T", D: "Destruição de hemácias" },
+    correct: "B",
+    explanation: "Opsoninas (IgG, C3b) facilitam fagocitose.",
+    tip: "Vem do grego 'preparar para comer'."
+  },
+  {
+    id: "m25",
+    difficulty: "medium",
+    question: "Qual célula produz anticorpos em grande quantidade?",
+    options: { A: "Linfócito T", B: "Plasmócito", C: "Neutrófilo", D: "NK" },
+    correct: "B",
+    explanation: "Plasmócitos são linfócitos B diferenciados.",
+    tip: "Fábrica de anticorpos."
+  },
+  {
+    id: "m26",
+    difficulty: "medium",
+    question: "Qual das opções é exemplo de imunidade passiva artificial?",
+    options: { A: "Vacina", B: "Soro antiofídico", C: "Infecção natural", D: "Memória imunológica" },
+    correct: "B",
+    explanation: "Soro fornece anticorpos prontos.",
+    tip: "Usado em emergências após picadas."
+  },
+  {
+    id: "m27",
+    difficulty: "medium",
+    question: "Qual tipo de célula reconhece antígenos apresentados por MHC II?",
+    options: { A: "Linfócito T CD4", B: "Linfócito T CD8", C: "NK", D: "Neutrófilo" },
+    correct: "A",
+    explanation: "CD4 reconhece MHC II.",
+    tip: "Linfócito T Auxiliar."
+  },
+  {
+    id: "m28",
+    difficulty: "medium",
+    question: "Qual imunoglobulina está mais associada a alergias e parasitoses?",
+    options: { A: "IgE", B: "IgM", C: "IgD", D: "IgA" },
+    correct: "A",
+    explanation: "IgE ativa mastócitos e eosinófilos.",
+    tip: "Liga-se a mastócitos."
+  },
 
-  // HARD (31-45)
+  // HARD (1-25)
   {
     id: "h1",
     difficulty: "hard",
@@ -418,5 +598,95 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     correct: "B",
     explanation: "Jenner iniciou vacinação usando cowpox contra varíola humana.",
     tip: "O pai da imunologia."
+  },
+  {
+    id: "h16",
+    difficulty: "hard",
+    question: "Qual hipersensibilidade está associada a alergias imediatas mediadas por IgE?",
+    options: { A: "Tipo I", B: "Tipo II", C: "Tipo III", D: "Tipo IV" },
+    correct: "A",
+    explanation: "Tipo I envolve IgE e mastócitos.",
+    tip: "Reação anafilática."
+  },
+  {
+    id: "h17",
+    difficulty: "hard",
+    question: "A hipersensibilidade Tipo II envolve principalmente:",
+    options: { A: "Linfócitos T e citocinas", B: "Anticorpos contra antígenos em células/tecidos", C: "IgE e histamina", D: "Imunocomplexos circulantes" },
+    correct: "B",
+    explanation: "Tipo II é citotóxica mediada por IgG/IgM.",
+    tip: "Exemplo: Incompatibilidade Rh."
+  },
+  {
+    id: "h18",
+    difficulty: "hard",
+    question: "A hipersensibilidade Tipo III é caracterizada por:",
+    options: { A: "Anticorpos IgE em mastócitos", B: "Deposição de imunocomplexos", C: "Ação direta de linfócitos T citotóxicos", D: "Falha de fagocitose por neutrófilos" },
+    correct: "B",
+    explanation: "Imunocomplexos causam inflamação tecidual.",
+    tip: "Exemplo: Lúpus."
+  },
+  {
+    id: "h19",
+    difficulty: "hard",
+    question: "A hipersensibilidade Tipo IV é mediada principalmente por:",
+    options: { A: "IgM", B: "IgE", C: "Linfócitos T", D: "Complemento C3" },
+    correct: "C",
+    explanation: "Tipo IV é tardia e mediada por células T.",
+    tip: "Exemplo: Teste de tuberculina."
+  },
+  {
+    id: "h20",
+    difficulty: "hard",
+    question: "Qual deficiência imunológica aumenta risco de infecções oportunistas e afeta linfócitos T CD4?",
+    options: { A: "AIDS (HIV)", B: "Diabetes tipo 2", C: "Hipotireoidismo", D: "Asma" },
+    correct: "A",
+    explanation: "HIV reduz CD4 e compromete imunidade adaptativa.",
+    tip: "Síndrome da Imunodeficiência Adquirida."
+  },
+  {
+    id: "h21",
+    difficulty: "hard",
+    question: "O complexo de ataque à membrana (MAC) pertence a qual sistema?",
+    options: { A: "Anticorpos", B: "Complemento", C: "Interferons", D: "PRRs" },
+    correct: "B",
+    explanation: "MAC (C5b-9) perfura membranas microbianas.",
+    tip: "Fura a parede das bactérias."
+  },
+  {
+    id: "h22",
+    difficulty: "hard",
+    question: "A rejeição aguda de transplantes está mais relacionada a:",
+    options: { A: "IgE e mastócitos", B: "Linfócitos T reconhecendo antígenos do enxerto", C: "Plaquetas destruindo células do órgão", D: "Eosinófilos ativando complemento" },
+    correct: "B",
+    explanation: "Rejeição envolve principalmente resposta celular T.",
+    tip: "Reconhecimento do HLA estranho."
+  },
+  {
+    id: "h23",
+    difficulty: "hard",
+    question: "Qual é a função principal do Interferon (IFN) em infecções virais?",
+    options: { A: "Destruir parasitas", B: "Estimular resposta antiviral e impedir replicação viral", C: "Produzir anticorpos IgE", D: "Aumentar glicose no sangue" },
+    correct: "B",
+    explanation: "IFNs induzem estado antiviral nas células.",
+    tip: "Sinaliza perigo para células vizinhas."
+  },
+  {
+    id: "h24",
+    difficulty: "hard",
+    question: "Qual citocina é fortemente pró-inflamatória e relacionada à febre e inflamação sistêmica?",
+    options: { A: "TNF-alfa", B: "IL-10", C: "TGF-beta", D: "IgG" },
+    correct: "A",
+    explanation: "TNF-alfa é pró-inflamatório e pode causar choque em excesso.",
+    tip: "Fator de Necrose Tumoral."
+  },
+  {
+    id: "h25",
+    difficulty: "hard",
+    question: "Por que a imunidade adaptativa é considerada mais eficiente após uma segunda exposição ao mesmo patógeno?",
+    options: { A: "Porque neutrófilos se multiplicam mais rápido", B: "Porque há formação de células de memória", C: "Porque barreiras físicas ficam mais fortes", D: "Porque o complemento deixa de existir" },
+    correct: "B",
+    explanation: "Células de memória aceleram e amplificam a resposta.",
+    tip: "O corpo já conhece o inimigo."
   }
 ];

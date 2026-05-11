@@ -61,9 +61,9 @@ const Studies = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-        <div className="space-y-2">
+      {/* Header - Ajustado para melhor alinhamento */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-white/5 pb-8">
+        <div className="space-y-2 text-center md:text-left">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 px-3 py-1 rounded-full">
             <Sparkles className="w-3 h-3 text-violet-400" />
             <span className="text-violet-400 text-[10px] font-black uppercase tracking-widest">Biblioteca Digital</span>
@@ -72,34 +72,34 @@ const Studies = () => {
           <p className="text-slate-400 font-medium">Conteúdos selecionados para sua evolução acadêmica.</p>
         </div>
         
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <Input 
             placeholder="Pesquisar no acervo..." 
-            className="pl-12 h-12 bg-white/5 border-white/10 text-white rounded-2xl focus:ring-violet-500 placeholder:text-slate-600 font-medium"
+            className="pl-12 h-14 bg-white/5 border-white/10 text-white rounded-2xl focus:ring-violet-500 placeholder:text-slate-600 font-medium"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid - Ajustado para cards de altura igual */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.map((item) => (
           <Card 
             key={item.id} 
             onClick={() => isAdmin && setManagedId(managedId === item.id ? null : item.id)}
             className={cn(
-              "bg-white/5 border-white/10 backdrop-blur-xl transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20 relative cursor-pointer",
-              managedId === item.id ? "ring-2 ring-violet-500 scale-[1.02]" : "hover:bg-white/10"
+              "bg-white/5 border-white/10 backdrop-blur-xl transition-all duration-500 group rounded-[2.5rem] overflow-hidden border-t-white/20 relative cursor-pointer flex flex-col h-full",
+              managedId === item.id ? "ring-2 ring-violet-500 scale-[1.02]" : "hover:bg-white/10 hover:-translate-y-1"
             )}
           >
             {/* Overlay de Gestão para Admins */}
             {isAdmin && managedId === item.id && (
-              <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-in zoom-in duration-300 p-6">
+              <div className="absolute inset-0 z-40 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-in zoom-in duration-300 p-8">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setManagedId(null); }}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                  className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -124,7 +124,7 @@ const Studies = () => {
               </div>
             )}
 
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-8 flex flex-col h-full space-y-6">
               <div className="flex items-start justify-between">
                 <div className="bg-violet-600/20 w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-violet-500/20">
                   <FileText className="text-violet-400 w-7 h-7" />
@@ -137,25 +137,27 @@ const Studies = () => {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <h3 className="text-white text-xl font-black tracking-tight leading-tight group-hover:text-violet-400 transition-colors">
+              <div className="space-y-3 flex-1">
+                <h3 className="text-white text-2xl font-black tracking-tight leading-tight group-hover:text-violet-400 transition-colors">
                   {item.title}
                 </h3>
-                <p className="text-slate-400 text-sm leading-relaxed line-clamp-2 font-medium">
+                <p className="text-slate-400 text-sm leading-relaxed line-clamp-3 font-medium">
                   {item.description || "Sem descrição disponível para este material."}
                 </p>
               </div>
 
-              <Button 
-                className="w-full h-12 bg-white/5 hover:bg-violet-600 text-white hover:text-white border border-white/10 hover:border-violet-500 rounded-xl font-black text-xs tracking-widest transition-all duration-300 group/btn"
-                asChild
-                onClick={(e) => e.stopPropagation()}
-              >
-                <a href={item.file_url} target="_blank" rel="noopener noreferrer">
-                  ACESSAR CONTEÚDO
-                  <ExternalLink className="ml-2 h-3 w-3 opacity-50 group-hover/btn:opacity-100 transition-opacity" />
-                </a>
-              </Button>
+              <div className="pt-4">
+                <Button 
+                  className="w-full h-14 bg-white/5 hover:bg-violet-600 text-white hover:text-white border border-white/10 hover:border-violet-500 rounded-2xl font-black text-xs tracking-widest transition-all duration-300 group/btn shadow-lg"
+                  asChild
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <a href={item.file_url} target="_blank" rel="noopener noreferrer">
+                    ACESSAR CONTEÚDO
+                    <ExternalLink className="ml-2 h-4 w-4 opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+                  </a>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}

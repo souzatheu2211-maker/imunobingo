@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Microscope, ShieldCheck, Users, Play, PlusCircle, LogIn } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
-import fagocitoseImg from '@/assets/fagocitose.png';
 
 const Index = () => {
   const [name, setName] = useState('');
@@ -95,16 +94,6 @@ const Index = () => {
 
   return (
     <div className="relative min-h-[80vh] flex items-center justify-center p-4">
-      {/* Imagem Decorativa de Fundo */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none overflow-hidden">
-        <img 
-          src={fagocitoseImg} 
-          alt="Fagocitose" 
-          className="w-full max-w-5xl object-contain mix-blend-screen animate-pulse"
-          style={{ animationDuration: '10s' }}
-        />
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center max-w-6xl w-full relative z-10">
         <div className="space-y-8 text-center lg:text-left">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 px-4 py-2 rounded-full">

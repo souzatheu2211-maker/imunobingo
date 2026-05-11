@@ -22,7 +22,8 @@ import {
   History,
   MessageSquare,
   CheckCircle2,
-  Crown
+  Crown,
+  PartyPopper
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -252,6 +253,10 @@ const Room = () => {
     showSuccess("Código copiado!");
   };
 
+  const winner = room?.status === 'finished' 
+    ? [...players].sort((a, b) => (b.points || 0) - (a.points || 0))[0]
+    : null;
+
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando laboratório...</div>;
 
   return (
@@ -312,27 +317,35 @@ const Room = () => {
             </div>
           </div>
 
-          {/* Painel de Sorteio - Reduzido */}
+          {/* Painel de Sorteio / Vencedor */}
           <Card className="bg-gradient-to-br from-slate-900/80 to-slate-900/40 border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-3xl border-t-white/20">
             <CardHeader className="bg-white/5 border-b border-white/5 py-3 px-6">
               <CardTitle className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                <Activity className="w-3 h-3 text-violet-500 animate-pulse" /> Monitor de Sorteio
+                <Activity className="w-3 h-3 text-violet-500 animate-pulse" /> 
+                {room.status === 'finished' ? 'Resultado Final' : 'Monitor de Sorteio'}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 md:p-8 text-center min-h-[180px] flex flex-col items-center justify-center relative">
-              {currentDraw ? (
+              {room.status === 'finished' && winner ? (
+                <div className="space-y-4 animate-in zoom-in duration-500">
+                  <div className="relative inline-block">
+                    <Trophy className="w-16 h-16 text-yellow-500 mx-auto animate-bounce" />
+                    <PartyPopper className="absolute -top-2 -right-2 w-6 h-6 text-pink-500 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter">
+                      GANHADOR: <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{winner.name.toUpperCase()}</span>
+                    </h2>
+                    <p className="text-emerald-400 font-black text-[10px] uppercase tracking-[0.4em]">Missão Cumprida com Sucesso!</p>
+                  </div>
+                </div>
+              ) : currentDraw ? (
                 <div className="space-y-6 animate-in fade-in zoom-in duration-500">
                   <div className="relative">
                     <p className="text-xl md:text-3xl font-black text-white leading-tight max-w-2xl mx-auto tracking-tight">
                       "{currentDraw.question}"
                     </p>
                   </div>
-                  
-                  {room.status === 'finished' && (
-                    <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-lg font-black px-6 py-2 rounded-xl shadow-2xl shadow-emerald-500/10">
-                      <Trophy className="w-5 h-5" /> RESPOSTA: {currentDraw.answer}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-slate-500 space-y-3">

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,34 +10,18 @@ import {
   Trophy, 
   Activity, 
   ShieldCheck,
-  TrendingUp,
   Target,
   Medal
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
 
 const Home = () => {
   const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState({
+    gamesPlayed: 0,
+    totalPoints: 0,
+    winRate: 0
+  });
   const [loading, setLoading] = useState(true);
-
-  const chartData = [
-    { name: 'Seg', pontos: 400 },
-    { name: 'Ter', pontos: 300 },
-    { name: 'Qua', pontos: 600 },
-    { name: 'Qui', pontos: 800 },
-    { name: 'Sex', pontos: 500 },
-    { name: 'Sáb', pontos: 900 },
-    { name: 'Dom', pontos: 200 },
-  ];
 
   const quotes = [
     "A imunologia é a ciência que estuda a dança eterna entre o 'eu' e o 'não-eu'.",
@@ -45,20 +31,39 @@ const Home = () => {
   ];
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data, error } = await supabase
+        // Buscar Perfil
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
         
-        if (data) setProfile(data);
+        if (profileData) {
+          setProfile(profileData);
+
+          // Buscar Estatísticas Reais baseadas no nome do jogador
+          const { data: playerStats, error: statsError } = await supabase
+            .from('players')
+            .select('points')
+            .eq('name', profileData.full_name);
+
+          if (playerStats) {
+            const totalPoints = playerStats.reduce((acc, curr) => acc + (curr.points || 0), 0);
+            const gamesPlayed = playerStats.length;
+            // Estimativa de winRate baseada em pontos altos (ex: > 100 pontos numa sala indica vitória/bom desempenho)
+            const wins = playerStats.filter(p => p.points >= 100).length;
+            const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+
+            setStats({ gamesPlayed, totalPoints, winRate });
+          }
+        }
       }
       setLoading(false);
     };
-    fetchProfile();
+    fetchData();
   }, []);
 
   if (loading) return <div className="text-white text-center py-20">Carregando seu painel...</div>;
@@ -96,97 +101,59 @@ const Home = () => {
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
           <div className="bg-blue-500/20 p-3 rounded-2xl"><Trophy className="text-blue-400 w-6 h-6" /></div>
           <div>
-            <p className="text-2xl font-black text-white">15</p>
+            <p className="text-2xl font-black text-white">{stats.gamesPlayed}</p>
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Partidas</p>
           </div>
         </div>
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
           <div className="bg-emerald-500/20 p-3 rounded-2xl"><Medal className="text-emerald-400 w-6 h-6" /></div>
           <div>
-            <p className="text-2xl font-black text-white">08</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Vitórias</p>
+            <p className="text-2xl font-black text-white">{stats.totalPoints}</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Total XP</p>
           </div>
         </div>
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
           <div className="bg-violet-500/20 p-3 rounded-2xl"><Target className="text-violet-400 w-6 h-6" /></div>
           <div>
-            <p className="text-2xl font-black text-white">85%</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Precisão</p>
+            <p className="text-2xl font-black text-white">{stats.winRate}%</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Taxa de Vitória</p>
           </div>
         </div>
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
           <div className="bg-pink-500/20 p-3 rounded-2xl"><Activity className="text-pink-400 w-6 h-6 animate-pulse" /></div>
           <div>
-            <p className="text-2xl font-black text-white">Ativo</p>
+            <p className="text-2xl font-black text-white">Online</p>
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Status</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
           <CardHeader className="pb-2">
-            <CardTitle className="text-white flex items-center gap-3 text-lg font-black uppercase tracking-widest">
-              <TrendingUp className="w-5 h-5 text-violet-400" /> Evolução Semanal (XP)
+            <CardTitle className="text-violet-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
+              <Quote className="w-4 h-4" /> Reflexão do Dia
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px] pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 'bold' }} 
-                />
-                <YAxis hide />
-                <Tooltip 
-                  cursor={{ fill: '#ffffff05' }}
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    border: '1px solid #ffffff10', 
-                    borderRadius: '12px',
-                    color: '#fff'
-                  }}
-                />
-                <Bar dataKey="pontos" radius={[6, 6, 0, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 5 ? '#8b5cf6' : '#3b82f680'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <p className="text-slate-200 italic text-base leading-relaxed font-medium">
+              "{quotes[Math.floor(Math.random() * quotes.length)]}"
+            </p>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-violet-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
-                <Quote className="w-4 h-4" /> Reflexão
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-slate-200 italic text-base leading-relaxed font-medium">
-                "{quotes[Math.floor(Math.random() * quotes.length)]}"
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-emerald-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
-                <Sparkles className="w-4 h-4" /> Curiosidade
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-slate-200 text-sm leading-relaxed font-medium">
-                O corpo humano produz cerca de 100 bilhões de novos neutrófilos todos os dias para manter sua imunidade inata alerta!
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-emerald-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
+              <Sparkles className="w-4 h-4" /> Curiosidade Imunológica
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-200 text-sm leading-relaxed font-medium">
+              O corpo humano produz cerca de 100 bilhões de novos neutrófilos todos os dias para manter sua imunidade inata alerta!
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

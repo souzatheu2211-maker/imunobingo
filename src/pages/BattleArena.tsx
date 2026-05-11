@@ -8,10 +8,32 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShieldAlert, Zap, Timer, Trophy, Heart, Activity, MessageSquare } from 'lucide-react';
+import { 
+  ShieldAlert, 
+  Zap, 
+  Timer, 
+  Trophy, 
+  Activity, 
+  Shield, 
+  Crosshair, 
+  Dna, 
+  Target, 
+  Skull,
+  AlertCircle
+} from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
+
+const ClassIcon = ({ className, icon: Icon, isWounded }: { className?: string, icon: any, isWounded: boolean }) => (
+  <div className={cn(
+    "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 border",
+    isWounded ? "bg-red-600/20 border-red-500 animate-pulse" : "bg-blue-600 border-blue-400",
+    className
+  )}>
+    <Icon className={cn("w-6 h-6 text-white", isWounded && "text-red-500")} />
+  </div>
+);
 
 const BattleArena = () => {
   const { id: roomId } = useParams();
@@ -26,6 +48,23 @@ const BattleArena = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const myPlayer = players.find(p => p.user_id === currentUserId);
+
+  const getClassIcon = (className: string) => {
+    switch (className) {
+      case 'Macrófago': return Shield;
+      case 'Neutrófilo': return Crosshair;
+      case 'Linfócito B': return Dna;
+      case 'Linfócito T CD8': return Target;
+      case 'Célula NK': return Skull;
+      default: return Activity;
+    }
+  };
+
+  const getHealthColor = (percentage: number) => {
+    if (percentage > 60) return "bg-emerald-500";
+    if (percentage > 30) return "bg-yellow-500";
+    return "bg-red-600";
+  };
 
   useEffect(() => {
     const setup = async () => {
@@ -138,7 +177,6 @@ const BattleArena = () => {
     const isCorrect = index === currentQuestion?.answer;
     const responseTime = (20 - timeLeft) * 1000;
 
-    // Registro da resposta no banco
     await supabase.from('battle_answers').insert({
       battle_room_id: roomId,
       player_id: myPlayer.id,
@@ -151,7 +189,6 @@ const BattleArena = () => {
       const speedBonus = Math.floor(timeLeft * 1.5);
       const damage = (myPlayer.attack || 10) + speedBonus;
       
-      // ATUALIZAÇÃO OTIMISTA: Reduz vida dos outros localmente na hora
       setPlayers(prev => prev.map(p => {
         if (p.id !== myPlayer.id && p.hp > 0) {
           return { ...p, hp: Math.max(0, p.hp - damage) };
@@ -169,10 +206,7 @@ const BattleArena = () => {
       showSuccess("Acerto Crítico!");
     } else {
       const newHp = Math.max(0, myPlayer.hp - 10);
-      
-      // ATUALIZAÇÃO OTIMISTA: Reduz sua própria vida localmente na hora
       setPlayers(prev => prev.map(p => p.id === myPlayer.id ? { ...p, hp: newHp } : p));
-
       await supabase.from('battle_players').update({ hp: newHp }).eq('id', myPlayer.id);
       setLogs(prev => [`Você errou e perdeu 10 HP!`, ...prev.slice(0, 4)]);
       showError("Erro de Defesa!");
@@ -205,35 +239,59 @@ const BattleArena = () => {
       <div className="lg:col-span-4 space-y-4">
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Combatentes</h2>
         <div className="space-y-3">
-          {players.map((p) => (
-            <Card key={p.id} className={cn(
-              "bg-white/5 border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden transition-all",
-              p.hp <= 0 ? "opacity-40 grayscale" : "",
-              p.id === myPlayer?.id ? "ring-1 ring-blue-500" : ""
-            )}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white">
-                      {p.name ? p.name[0] : '?'}
+          {players.map((p) => {
+            const hpPercentage = (p.hp / p.max_hp) * 100;
+            const isWounded = hpPercentage <= 30 && p.hp > 0;
+            const isDead = p.hp <= 0;
+
+            return (
+              <Card key={p.id} className={cn(
+                "bg-white/5 border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden transition-all duration-500",
+                isDead ? "opacity-40 grayscale" : "",
+                p.id === myPlayer?.id ? "ring-2 ring-blue-500/50" : ""
+              )}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <ClassIcon 
+                        icon={getClassIcon(p.class)} 
+                        isWounded={isWounded} 
+                      />
+                      <div>
+                        <p className="font-black text-sm text-white flex items-center gap-1">
+                          {p.name}
+                          {isWounded && <AlertCircle className="w-3 h-3 text-red-500 animate-bounce" />}
+                        </p>
+                        <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest">{p.class}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-black text-sm text-white">{p.name}</p>
-                      <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest">{p.class}</p>
+                    {isDead && <Badge variant="destructive" className="text-[8px] font-black">ELIMINADO</Badge>}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase">
+                      <span>Integridade Celular</span>
+                      <span className={cn(hpPercentage <= 30 ? "text-red-500" : "text-slate-400")}>
+                        {p.hp}/{p.max_hp}
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-1000 ease-out relative",
+                          getHealthColor(hpPercentage)
+                        )}
+                        style={{ width: `${hpPercentage}%` }}
+                      >
+                        {isWounded && (
+                          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {p.hp <= 0 && <Badge variant="destructive" className="text-[8px]">ELIMINADO</Badge>}
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase">
-                    <span>Integridade Celular</span>
-                    <span>{p.hp}/{p.max_hp}</span>
-                  </div>
-                  <Progress value={(p.hp / p.max_hp) * 100} className="h-2 bg-white/5" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <Card className="bg-slate-900/50 border-white/10 rounded-2xl h-40 overflow-hidden">

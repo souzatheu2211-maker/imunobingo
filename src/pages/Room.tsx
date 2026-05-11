@@ -8,7 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Users, Play, RotateCcw, Copy, LogOut, Microscope, Activity, Sparkles, History } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  Trophy, 
+  Users, 
+  Play, 
+  RotateCcw, 
+  Copy, 
+  LogOut, 
+  Microscope, 
+  Activity, 
+  Sparkles, 
+  History,
+  MessageSquare
+} from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
@@ -62,7 +75,6 @@ const Room = () => {
       if (cardData) {
         setCardTerms(cardData.card_data);
       } else {
-        // Selecionar apenas 16 termos para a nova cartela 4x4
         const shuffled = [...IMMUNOLOGY_TERMS].sort(() => 0.5 - Math.random());
         const selected = shuffled.slice(0, 16).map(t => t.answer);
         await supabase.from('bingo_cards').insert({
@@ -171,7 +183,7 @@ const Room = () => {
   };
 
   const checkBingo = () => {
-    const size = 4; // Grid 4x4
+    const size = 4;
     const grid = [];
     for (let i = 0; i < size; i++) {
       grid.push(cardTerms.slice(i * size, (i + 1) * size));
@@ -181,11 +193,9 @@ const Room = () => {
       return markedTerms.includes(grid[row][col]);
     };
 
-    // Linhas
     for (let i = 0; i < size; i++) {
       if (grid[i].every((_, j) => isMarked(i, j))) return true;
     }
-    // Colunas
     for (let j = 0; j < size; j++) {
       let colWin = true;
       for (let i = 0; i < size; i++) {
@@ -193,7 +203,6 @@ const Room = () => {
       }
       if (colWin) return true;
     }
-    // Diagonais
     let diag1 = true;
     let diag2 = true;
     for (let i = 0; i < size; i++) {
@@ -237,7 +246,22 @@ const Room = () => {
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando laboratório...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 animate-in fade-in duration-700 relative">
+      
+      {/* Botão Flutuante do Chat */}
+      <div className="fixed bottom-8 right-8 z-50">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="icon" className="w-16 h-16 rounded-full bg-violet-600 hover:bg-violet-500 shadow-2xl shadow-violet-900/40 border-4 border-slate-950 animate-bounce hover:animate-none">
+              <MessageSquare className="w-7 h-7 text-white" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="end" className="p-0 bg-transparent border-none shadow-none mb-4">
+            <Chat roomId={roomId!} playerName={localStorage.getItem('imuno_player_name') || 'Anônimo'} />
+          </PopoverContent>
+        </Popover>
+      </div>
+
       <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Coluna Principal: Jogo */}
@@ -348,7 +372,7 @@ const Room = () => {
           </div>
         </div>
 
-        {/* Coluna Lateral: Ranking e Chat */}
+        {/* Coluna Lateral: Ranking e Histórico */}
         <div className="lg:col-span-4 space-y-8">
           
           {/* Ranking */}
@@ -393,11 +417,6 @@ const Room = () => {
               </ScrollArea>
             </CardContent>
           </Card>
-
-          {/* Chat */}
-          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
-            <Chat roomId={roomId!} playerName={localStorage.getItem('imuno_player_name') || 'Anônimo'} />
-          </div>
 
           {/* Histórico */}
           <Card className="bg-slate-900/60 border-white/10 rounded-[2.5rem] shadow-2xl backdrop-blur-2xl overflow-hidden border-t-white/20">

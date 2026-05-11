@@ -55,14 +55,22 @@ const MillionaireGame = () => {
         if (!user) return navigate('/login');
         setCurrentUserId(user.id);
 
+        // Busca sala
         const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
         if (!roomData) return navigate('/millionaire');
         setRoom(roomData);
 
+        // Busca jogadores
         const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
         setPlayers(playersData || []);
+
+        // Se eu não estiver na lista de jogadores (raro, mas possível por delay), tento me buscar especificamente
+        if (!playersData?.find(p => p.user_id === user.id)) {
+          const { data: me } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('user_id', user.id).single();
+          if (me) setPlayers(prev => [...prev, me]);
+        }
       } catch (error) {
-        console.error(error);
+        console.error("Erro no setup:", error);
       } finally {
         setLoading(false);
       }
@@ -70,11 +78,14 @@ const MillionaireGame = () => {
 
     setup();
 
-    const channel = supabase.channel(`millionaire:${roomId}`)
+    const channel = supabase.channel(`millionaire_room_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         if (payload.new) {
-          setRoom(payload.new);
-          if (!payload.new.show_answer) {
+          const newRoom = payload.new as any;
+          setRoom(newRoom);
+          
+          // Reset de rodada quando o host avança ou inicia
+          if (newRoom.status === 'playing' && !newRoom.show_answer) {
             setTimeLeft(20);
             setAnswered(false);
             setSelectedChoice(null);
@@ -84,8 +95,11 @@ const MillionaireGame = () => {
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
-        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        if (payload.eventType === 'INSERT') {
+          setPlayers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        }
       })
       .subscribe();
 
@@ -93,19 +107,19 @@ const MillionaireGame = () => {
   }, [roomId, navigate]);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !answered && room?.status === 'playing') {
+      timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+    } else if (timeLeft === 0 && !answered && room?.status === 'playing' && !room.show_answer) {
       processEndOfTurn();
     }
+    return () => clearTimeout(timer);
   }, [timeLeft, room?.status, room?.show_answer, answered]);
 
   const processEndOfTurn = async () => {
     if (answered) return;
     setAnswered(true);
 
-    // 1. Processar resposta do jogador local (se não estiver eliminado)
     if (myPlayer && !myPlayer.is_eliminated) {
       const isCorrect = selectedChoice === currentQuestion.correct;
       let newValue = myPlayer.current_value;
@@ -129,7 +143,6 @@ const MillionaireGame = () => {
       }).eq('id', myPlayer.id);
     }
 
-    // 2. O Host gerencia o avanço da sala (independente de estar eliminado)
     if (room.host_id === currentUserId) {
       await supabase.from('millionaire_rooms').update({ show_answer: true }).eq('id', roomId);
       
@@ -193,7 +206,12 @@ const MillionaireGame = () => {
     setLifelines(prev => ({ ...prev, statistics: false }));
   };
 
-  if (loading || !room || !myPlayer) return <div className="text-white text-center py-20">Sincronizando...</div>;
+  if (loading || !room || !myPlayer) return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+      <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">

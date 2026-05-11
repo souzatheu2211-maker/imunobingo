@@ -27,7 +27,9 @@ import {
   Split,
   Lightbulb,
   Repeat,
-  ShieldCheck
+  ShieldCheck,
+  HandMetal,
+  Coins
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -115,9 +117,6 @@ const MillionaireGame = () => {
       if (isCorrect) {
         newValue = PRIZES[room.current_question_index];
       } else {
-        // Lógica de Checkpoint:
-        // Se errou na Q6-Q10 (índices 5-9), garante R$ 10.000 (índice 4)
-        // Se errou na Q11-Q15 (índices 10-14), garante R$ 200.000 (índice 9)
         if (room.current_question_index > 9) newValue = PRIZES[9];
         else if (room.current_question_index > 4) newValue = PRIZES[4];
         else newValue = 0;
@@ -189,6 +188,24 @@ const MillionaireGame = () => {
       showError("Erro ao enviar resposta.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleStop = async () => {
+    if (myPlayer?.is_eliminated || room?.phase !== 'question' || !!myAnswer) return;
+    
+    const confirmed = window.confirm(`Deseja realmente parar agora e levar R$ ${myPlayer.current_value.toLocaleString()}?`);
+    if (!confirmed) return;
+
+    try {
+      await supabase.from('millionaire_players').update({
+        is_eliminated: true,
+        last_answered_index: room.current_question_index - 1
+      }).eq('id', myPlayer.id);
+      
+      showSuccess("Você parou e garantiu seu prêmio!");
+    } catch (error) {
+      showError("Erro ao processar parada.");
     }
   };
 
@@ -286,6 +303,8 @@ const MillionaireGame = () => {
     );
   }
 
+  const canStop = myPlayer.current_value >= 20000 && !myPlayer.is_eliminated && room.phase === 'question' && !myAnswer;
+
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
       
@@ -334,7 +353,7 @@ const MillionaireGame = () => {
                   <div className={cn("w-2 h-2 rounded-full", p.is_eliminated ? "bg-red-500" : "bg-emerald-500 animate-pulse")} />
                   <div className="flex flex-col">
                     <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
-                    {p.is_eliminated && <span className="text-[8px] text-red-500 font-black uppercase">Eliminado</span>}
+                    {p.is_eliminated && <span className="text-[8px] text-red-500 font-black uppercase">Finalizado</span>}
                   </div>
                 </div>
                 <span className="text-[10px] font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</span>
@@ -386,9 +405,9 @@ const MillionaireGame = () => {
           </Card>
         ) : room.phase === 'question' ? (
           <div className="space-y-8">
-            {/* Barra de Ajudas */}
+            {/* Barra de Ajudas e Parada */}
             {!myPlayer.is_eliminated && (
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-wrap justify-center gap-4">
                 <Button 
                   onClick={use5050} 
                   disabled={used5050 || !!myAnswer}
@@ -419,6 +438,15 @@ const MillionaireGame = () => {
                 >
                   <Lightbulb className="w-5 h-5" /> DICA
                 </Button>
+                
+                {canStop && (
+                  <Button 
+                    onClick={handleStop}
+                    className="h-14 px-8 rounded-2xl font-black bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/20 animate-in zoom-in duration-500"
+                  >
+                    <HandMetal className="mr-2 w-5 h-5" /> PARAR E LEVAR R$ {myPlayer.current_value.toLocaleString()}
+                  </Button>
+                )}
               </div>
             )}
 
@@ -510,17 +538,17 @@ const MillionaireGame = () => {
 
               <Card className="bg-red-500/10 border-red-500/20 rounded-3xl p-6">
                 <h3 className="text-red-400 font-black uppercase text-xs tracking-widest mb-4 flex items-center gap-2">
-                  <XCircle className="w-4 h-4" /> Eliminados
+                  <XCircle className="w-4 h-4" /> Eliminados / Pararam
                 </h3>
                 <div className="space-y-2">
                   {players.filter(p => p.is_eliminated && p.last_answered_index === room.current_question_index).map(p => (
                     <div key={p.id} className="text-slate-400 font-bold flex justify-between">
                       <span>{p.name}</span>
-                      <span className="text-red-500">ELIMINADO</span>
+                      <span className="text-red-500">FINALIZADO</span>
                     </div>
                   ))}
                   {players.filter(p => p.is_eliminated && p.last_answered_index === room.current_question_index).length === 0 && (
-                    <p className="text-slate-600 text-xs italic">Ninguém foi eliminado nesta rodada.</p>
+                    <p className="text-slate-600 text-xs italic">Ninguém saiu nesta rodada.</p>
                   )}
                 </div>
               </Card>

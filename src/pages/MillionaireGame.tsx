@@ -20,7 +20,8 @@ import {
   Sparkles,
   LogOut,
   Monitor,
-  Zap
+  Zap,
+  Eye
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -98,7 +99,8 @@ const MillionaireGame = () => {
   }, [roomId, navigate]);
 
   useEffect(() => {
-    if (room?.status === 'playing' && timeLeft > 0 && !answered && !myPlayer?.is_eliminated) {
+    // O cronômetro continua rodando para todos, mesmo eliminados, para manter a sincronia visual
+    if (room?.status === 'playing' && timeLeft > 0 && !answered) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0 && !answered && room?.status === 'playing' && !myPlayer?.is_eliminated) {
@@ -166,7 +168,7 @@ const MillionaireGame = () => {
   };
 
   const useFiftyFifty = () => {
-    if (!lifelines.fiftyFifty || answered) return;
+    if (!lifelines.fiftyFifty || answered || myPlayer?.is_eliminated) return;
     const options = ['A', 'B', 'C', 'D'].filter(o => o !== currentQuestion.correct);
     const toRemove = options.sort(() => 0.5 - Math.random()).slice(0, 2);
     setRemovedOptions(toRemove);
@@ -174,7 +176,7 @@ const MillionaireGame = () => {
   };
 
   const useStatistics = () => {
-    if (!lifelines.statistics || answered) return;
+    if (!lifelines.statistics || answered || myPlayer?.is_eliminated) return;
     const stats: any = { A: 5, B: 5, C: 5, D: 5 };
     const isAccurate = Math.random() < 0.8;
     const target = isAccurate ? currentQuestion.correct : ['A', 'B', 'C', 'D'].find(o => o !== currentQuestion.correct);
@@ -184,7 +186,7 @@ const MillionaireGame = () => {
   };
 
   const useDoubleChance = () => {
-    if (!lifelines.doubleChance || answered) return;
+    if (!lifelines.doubleChance || answered || myPlayer?.is_eliminated) return;
     setDoubleChanceActive(true);
     setLifelines(prev => ({ ...prev, doubleChance: false }));
     showSuccess("Dupla Chance Ativada! Você pode errar uma vez.");
@@ -215,6 +217,24 @@ const MillionaireGame = () => {
             })}
           </div>
         </Card>
+
+        <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
+          <div className="p-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Candidatos</h3>
+            <Users className="w-3 h-3 text-blue-400" />
+          </div>
+          <div className="p-4 space-y-3">
+            {players.sort((a, b) => b.current_value - a.current_value).map(p => (
+              <div key={p.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={cn("w-2 h-2 rounded-full", p.is_eliminated ? "bg-red-500" : "bg-emerald-500 animate-pulse")} />
+                  <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
+                </div>
+                <span className="text-[10px] font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
@@ -224,6 +244,11 @@ const MillionaireGame = () => {
             <span className="font-black text-white tracking-tight">SALA #{room.code}</span>
           </div>
           <div className="flex items-center gap-4">
+            {myPlayer.is_eliminated && room.status === 'playing' && (
+              <Badge className="bg-red-600/20 text-red-500 border-red-500/30 flex items-center gap-2 px-3 py-1">
+                <Eye className="w-3 h-3" /> MODO ESPECTADOR
+              </Badge>
+            )}
             {room.host_id === currentUserId && (
               <Button 
                 variant="outline" 
@@ -253,9 +278,9 @@ const MillionaireGame = () => {
         ) : room.status === 'playing' ? (
           <div className="space-y-8">
             <div className="grid grid-cols-3 gap-4">
-              <Button disabled={!lifelines.fiftyFifty || answered || myPlayer.is_eliminated} onClick={useFiftyFifty} className={cn("h-16 rounded-2xl font-black border-2", lifelines.fiftyFifty ? "bg-white/5 border-white/10 hover:bg-yellow-600" : "opacity-30 bg-slate-800")}>50/50</Button>
-              <Button disabled={!lifelines.statistics || answered || myPlayer.is_eliminated} onClick={useStatistics} className={cn("h-16 rounded-2xl font-black border-2", lifelines.statistics ? "bg-white/5 border-white/10 hover:bg-blue-600" : "opacity-30 bg-slate-800")}>ESTATÍSTICAS</Button>
-              <Button disabled={!lifelines.doubleChance || answered || myPlayer.is_eliminated} onClick={useDoubleChance} className={cn("h-16 rounded-2xl font-black border-2", lifelines.doubleChance ? "bg-white/5 border-white/10 hover:bg-emerald-600" : "opacity-30 bg-slate-800")}>DUPLA CHANCE</Button>
+              <Button disabled={!lifelines.fiftyFifty || answered || myPlayer.is_eliminated} onClick={useFiftyFifty} className={cn("h-16 rounded-2xl font-black border-2", lifelines.fiftyFifty && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-yellow-600" : "opacity-30 bg-slate-800")}>50/50</Button>
+              <Button disabled={!lifelines.statistics || answered || myPlayer.is_eliminated} onClick={useStatistics} className={cn("h-16 rounded-2xl font-black border-2", lifelines.statistics && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-blue-600" : "opacity-30 bg-slate-800")}>ESTATÍSTICAS</Button>
+              <Button disabled={!lifelines.doubleChance || answered || myPlayer.is_eliminated} onClick={useDoubleChance} className={cn("h-16 rounded-2xl font-black border-2", lifelines.doubleChance && !myPlayer.is_eliminated ? "bg-white/5 border-white/10 hover:bg-emerald-600" : "opacity-30 bg-slate-800")}>DUPLA CHANCE</Button>
             </div>
 
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
@@ -292,7 +317,7 @@ const MillionaireGame = () => {
                     onClick={() => handleAnswer(key)}
                     className={cn(
                       "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
-                      answered && key === currentQuestion.correct ? "bg-emerald-600 border-emerald-400 text-white" :
+                      (answered || room.show_answer) && key === currentQuestion.correct ? "bg-emerald-600 border-emerald-400 text-white scale-105" :
                       answered && key !== currentQuestion.correct ? "bg-white/5 border-white/10 text-slate-500" :
                       "bg-white/5 border-white/10 text-white hover:bg-yellow-600"
                     )}
@@ -303,7 +328,35 @@ const MillionaireGame = () => {
                 );
               })}
             </div>
+
+            {myPlayer.is_eliminated && (
+              <div className="bg-red-600/10 border border-red-500/20 p-6 rounded-[2rem] text-center space-y-2 animate-in slide-in-from-bottom">
+                <div className="flex items-center justify-center gap-2 text-red-500 font-black uppercase tracking-widest text-xs">
+                  <AlertTriangle className="w-4 h-4" /> Você foi eliminado
+                </div>
+                <p className="text-slate-500 text-[10px] font-bold">Continue acompanhando a disputa dos outros candidatos em tempo real.</p>
+              </div>
+            )}
           </div>
+        ) : room.status === 'finished' ? (
+          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl">
+            <Trophy className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" />
+            <h2 className="text-6xl font-black text-white tracking-tighter">FIM DE JOGO</h2>
+            <div className="max-w-md mx-auto space-y-4">
+              {players.sort((a, b) => b.current_value - a.current_value).map((p, i) => (
+                <div key={p.id} className={cn(
+                  "flex items-center justify-between p-6 rounded-3xl border",
+                  i === 0 ? "bg-yellow-600/20 border-yellow-500" : "bg-white/5 border-white/10"
+                )}>
+                  <span className="font-black text-white text-xl">{i + 1}º {p.name}</span>
+                  <span className="text-yellow-500 font-black text-xl">R$ {p.current_value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+            <Button onClick={() => navigate('/modes')} variant="outline" className="h-16 px-12 rounded-2xl font-black text-lg border-white/10 hover:bg-white/5">
+              VOLTAR AO MENU
+            </Button>
+          </Card>
         ) : null}
       </div>
     </div>

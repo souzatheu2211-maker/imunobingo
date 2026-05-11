@@ -10,28 +10,35 @@ interface BingoCardProps {
 
 const BingoCard: React.FC<BingoCardProps> = ({ terms, markedTerms, onMark, disabled }) => {
   return (
-    <div className="grid grid-cols-5 gap-2 md:gap-3 w-full max-w-md mx-auto">
+    <div className="grid grid-cols-4 gap-3 md:gap-4 w-full max-w-lg mx-auto">
       {terms.map((term, index) => {
-        const isFree = index === 12;
-        const isMarked = isFree || markedTerms.includes(term);
+        const isMarked = markedTerms.includes(term);
         
         return (
           <button
             key={index}
-            disabled={disabled || isFree}
+            disabled={disabled}
             onClick={() => onMark(term)}
             className={cn(
-              "aspect-square flex items-center justify-center text-[10px] md:text-xs font-bold p-1 rounded-lg transition-all duration-200 border-2 shadow-sm",
-              isFree 
-                ? "bg-violet-600 border-violet-400 text-white animate-pulse" 
-                : isMarked
-                  ? "bg-emerald-500 border-emerald-300 text-white scale-95 shadow-inner"
-                  : "bg-white border-slate-200 text-slate-700 hover:border-violet-400 hover:bg-slate-50 active:scale-95"
+              "aspect-square flex items-center justify-center text-[10px] md:text-xs font-black p-2 rounded-2xl transition-all duration-300 border-2 shadow-lg relative overflow-hidden group",
+              isMarked
+                ? "bg-emerald-500 border-emerald-400 text-white scale-95 shadow-emerald-900/20"
+                : "bg-slate-900/40 border-white/10 text-slate-300 hover:border-violet-500/50 hover:bg-slate-800/60 active:scale-95"
             )}
           >
-            <span className="text-center break-words">
-              {isFree ? "CÉLULA LIVRE" : term}
+            {/* Efeito de brilho interno quando marcado */}
+            {isMarked && (
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
+            )}
+            
+            <span className="text-center break-words leading-tight z-10 uppercase tracking-tighter">
+              {term}
             </span>
+
+            {/* Indicador visual de hover */}
+            {!isMarked && !disabled && (
+              <div className="absolute inset-0 bg-violet-500/0 group-hover:bg-violet-500/5 transition-colors" />
+            )}
           </button>
         );
       })}

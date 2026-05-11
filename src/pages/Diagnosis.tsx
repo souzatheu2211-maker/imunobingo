@@ -50,6 +50,15 @@ const Diagnosis = () => {
     setSelectedAnswer(null);
   };
 
+  const revealNextClue = () => {
+    if (selectedCase && revealedClues < selectedCase.clues.length) {
+      setRevealedClues(prev => prev + 1);
+      if (revealedClues + 1 === selectedCase.clues.length) {
+        showSuccess("Todas as evidências coletadas!");
+      }
+    }
+  };
+
   const saveResult = (id: string, status: CaseResult) => {
     const newResults = { ...results, [id]: status };
     setResults(newResults);

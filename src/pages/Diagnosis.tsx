@@ -140,12 +140,15 @@ const Diagnosis = () => {
                     )}>
                       <Stethoscope className="text-emerald-400 w-7 h-7" />
                     </div>
-                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase">
-                      {c.category}
-                    </Badge>
+                    <div className="text-right">
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Categoria</span>
+                      <Badge variant="outline" className="border-white/10 text-slate-400 text-[7px] font-bold uppercase">
+                        {c.category}
+                      </Badge>
+                    </div>
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <h3 className="text-white text-2xl font-black tracking-tight leading-tight group-hover:text-emerald-400 transition-colors">
                       {c.title}
                     </h3>
@@ -154,8 +157,8 @@ const Diagnosis = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors">
-                    {isCompleted ? "Revisar Caso" : "Iniciar Investigação"} <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors pt-2">
+                    {isCompleted ? "Revisar Investigação" : "Iniciar Investigação"} <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>

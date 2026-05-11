@@ -59,7 +59,9 @@ const MillionairePresentation = () => {
     </div>
   );
 
-  const currentQuestion = MILLIONAIRE_QUESTIONS[room.current_question_index];
+  // Busca a pergunta baseada no ID salvo na sala
+  const currentQuestionId = room?.question_ids?.[room?.current_question_index];
+  const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
 
   return (
     <div className="min-h-screen bg-slate-950 p-12 flex flex-col gap-12 overflow-hidden">

@@ -48,10 +48,13 @@ const MillionaireGame = () => {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
-  const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index || 0];
+  
+  // Busca a pergunta baseada no ID salvo na sala
+  const currentQuestionId = room?.question_ids?.[room?.current_question_index];
+  const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
+  
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
 
-  // Sincronização do Timer
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
       const updateTimer = () => {
@@ -161,10 +164,19 @@ const MillionaireGame = () => {
 
   const startGame = async () => {
     if (room.host_id !== currentUserId) return;
+
+    // Sorteia 5 fáceis, 5 médias e 5 difíceis
+    const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5).slice(0, 5);
+    const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5).slice(0, 5);
+    const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5).slice(0, 5);
+    
+    const questionIds = [...easy, ...medium, ...hard].map(q => q.id);
+
     await supabase.from('millionaire_rooms').update({
       status: 'playing',
       phase: 'question',
       current_question_index: 0,
+      question_ids: questionIds,
       question_started_at: new Date().toISOString()
     }).eq('id', roomId);
   };

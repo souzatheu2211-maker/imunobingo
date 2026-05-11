@@ -102,5 +102,59 @@ export const DIAGNOSIS_CASES: DiagnosisCase[] = [
     },
     category: "Hipersensibilidade Tipo II",
     explanation: "A Eritroblastose Fetal ocorre quando anticorpos IgG anti-Rh da mãe atravessam a placenta e destroem as hemácias do feto Rh+. É uma hipersensibilidade citotóxica tipo II."
+  },
+  {
+    id: "6",
+    title: "Fraqueza Muscular Progressiva",
+    initialPresentation: "Homem de 50 anos queixa-se de visão dupla (diplopia) e pálpebra caída ao final do dia.",
+    clues: [
+      "Pista 1: O paciente relata dificuldade para mastigar alimentos mais duros no jantar.",
+      "Pista 2: A força muscular melhora significativamente após períodos de repouso.",
+      "Pista 3: O teste de gelo (aplicação de gelo na pálpebra) melhora temporariamente a ptose.",
+      "Pista 4: Exames detectam anticorpos contra receptores de acetilcolina (anti-AChR)."
+    ],
+    finalQuestion: {
+      question: "Qual a patologia da junção neuromuscular?",
+      options: ["Esclerose Lateral Amiotrófica", "Miastenia Gravis", "Síndrome de Guillain-Barré", "Botulismo"],
+      answer: 1
+    },
+    category: "Autoimunidade",
+    explanation: "A Miastenia Gravis é uma doença autoimune onde anticorpos bloqueiam os receptores de acetilcolina na placa motora, causando fraqueza muscular flutuante."
+  },
+  {
+    id: "7",
+    title: "O Caso da Pulseira de Metal",
+    initialPresentation: "Adolescente de 16 anos apresenta erupção cutânea com bolhas e coceira intensa no pulso esquerdo.",
+    clues: [
+      "Pista 1: A lesão surgiu exatamente 48 horas após começar a usar uma pulseira nova de bijuteria.",
+      "Pista 2: A área está vermelha, inchada e com pequenas vesículas que liberam líquido.",
+      "Pista 3: O teste de contato (Patch Test) foi positivo para Níquel.",
+      "Pista 4: A biópsia da pele mostra infiltrado de linfócitos T e macrófagos (sem anticorpos)."
+    ],
+    finalQuestion: {
+      question: "Qual o tipo de reação imunológica?",
+      options: ["Hipersensibilidade Tipo I", "Hipersensibilidade Tipo II", "Hipersensibilidade Tipo III", "Hipersensibilidade Tipo IV"],
+      answer: 3
+    },
+    category: "Hipersensibilidade Tardia",
+    explanation: "A Dermatite de Contato é uma hipersensibilidade tipo IV (tardia), mediada por células T que respondem a haptenos (como o níquel) ligados a proteínas da pele."
+  },
+  {
+    id: "8",
+    title: "Infecções de Repetição",
+    initialPresentation: "Bebê de 6 meses apresenta pneumonia pela terceira vez e candidíase persistente.",
+    clues: [
+      "Pista 1: O bebê apresenta baixo ganho de peso e diarreia crônica.",
+      "Pista 2: O hemograma mostra ausência quase total de linfócitos (linfopenia severa).",
+      "Pista 3: O exame de imagem mostra ausência da sombra do timo no mediastino.",
+      "Pista 4: Testes genéticos confirmam mutação na cadeia gama comum de receptores de citocinas."
+    ],
+    finalQuestion: {
+      question: "Qual a imunodeficiência primária grave?",
+      options: ["Agamaglobulinemia de Bruton", "Síndrome de DiGeorge", "SCID (Imunodeficiência Combinada Grave)", "Deficiência de IgA"],
+      answer: 2
+    },
+    category: "Imunodeficiência Primária",
+    explanation: "A SCID é uma emergência pediátrica onde há ausência de células T e B funcionais, deixando o bebê vulnerável a qualquer patógeno. É conhecida como a doença do 'menino na bolha'."
   }
 ];

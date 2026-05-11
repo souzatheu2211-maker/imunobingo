@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Stethoscope,
   FileText,
-  Lightbulb
+  Lightbulb,
+  Trophy
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -29,6 +30,15 @@ const Diagnosis = () => {
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [completedIds, setCompletedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('imuno_completed_cases');
+    if (saved) setCompletedIds(JSON.parse(saved));
+    
+    const savedScore = localStorage.getItem('imuno_diagnosis_score');
+    if (savedScore) setScore(parseInt(savedScore));
+  }, []);
 
   const startCase = (c: DiagnosisCase) => {
     setSelectedCase(c);
@@ -54,9 +64,17 @@ const Diagnosis = () => {
     const isCorrect = index === selectedCase.finalQuestion.answer;
     
     if (isCorrect) {
-      // Bônus por usar menos pistas (opcional, aqui daremos 50 fixo + bônus de precisão)
       const finalScore = 50 + (4 - revealedClues) * 5;
-      setScore(prev => prev + finalScore);
+      const newScore = score + finalScore;
+      setScore(newScore);
+      localStorage.setItem('imuno_diagnosis_score', newScore.toString());
+      
+      if (!completedIds.includes(selectedCase.id)) {
+        const newCompleted = [...completedIds, selectedCase.id];
+        setCompletedIds(newCompleted);
+        localStorage.setItem('imuno_completed_cases', JSON.stringify(newCompleted));
+      }
+      
       showSuccess("Diagnóstico Preciso! Parabéns, Doutor(a).");
       confetti();
     } else {
@@ -83,45 +101,88 @@ const Diagnosis = () => {
             <h1 className="text-4xl font-black text-white tracking-tighter">Missão Diagnóstico</h1>
             <p className="text-slate-400 font-medium">Analise as pistas clínicas e identifique a patologia.</p>
           </div>
-          <div className="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-xl">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Score Total</p>
-            <p className="text-2xl font-black text-emerald-400">{score} XP</p>
+          <div className="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-xl flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Casos Resolvidos</p>
+              <p className="text-xl font-black text-white">{completedIds.length}/{DIAGNOSIS_CASES.length}</p>
+            </div>
+            <div className="h-10 w-px bg-white/10" />
+            <div className="text-right">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Score Total</p>
+              <p className="text-xl font-black text-emerald-400">{score} XP</p>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DIAGNOSIS_CASES.map((c) => (
-            <Card 
-              key={c.id} 
-              onClick={() => startCase(c)}
-              className="bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2.5rem] overflow-hidden border-t-white/20 cursor-pointer"
-            >
-              <CardContent className="p-8 space-y-6">
-                <div className="flex items-start justify-between">
-                  <div className="bg-emerald-600/20 w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-emerald-500/20">
-                    <Stethoscope className="text-emerald-400 w-7 h-7" />
+          {DIAGNOSIS_CASES.map((c) => {
+            const isCompleted = completedIds.includes(c.id);
+            return (
+              <Card 
+                key={c.id} 
+                onClick={() => startCase(c)}
+                className={cn(
+                  "bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2.5rem] overflow-hidden border-t-white/20 cursor-pointer relative",
+                  isCompleted && "opacity-80"
+                )}
+              >
+                {isCompleted && (
+                  <div className="absolute top-6 right-6 bg-emerald-500/20 p-2 rounded-full border border-emerald-500/30 z-10">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase">
-                    {c.category}
-                  </Badge>
-                </div>
+                )}
                 
-                <div className="space-y-2">
-                  <h3 className="text-white text-xl font-black tracking-tight leading-tight group-hover:text-emerald-400 transition-colors">
-                    {c.title}
-                  </h3>
-                  <p className="text-slate-400 text-sm leading-relaxed line-clamp-2 font-medium">
-                    {c.initialPresentation}
-                  </p>
-                </div>
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex items-start justify-between">
+                    <div className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border",
+                      isCompleted ? "bg-emerald-600/20 border-emerald-500/20" : "bg-emerald-600/20 border-emerald-500/20"
+                    )}>
+                      <Stethoscope className="text-emerald-400 w-7 h-7" />
+                    </div>
+                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase">
+                      {c.category}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-white text-2xl font-black tracking-tight leading-tight group-hover:text-emerald-400 transition-colors">
+                      {c.title}
+                    </h3>
+                    <p className="text-slate-400 text-sm leading-relaxed line-clamp-2 font-medium">
+                      {c.initialPresentation}
+                    </p>
+                  </div>
 
-                <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors">
-                  Iniciar Investigação <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors">
+                    {isCompleted ? "Revisar Caso" : "Iniciar Investigação"} <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+
+        {completedIds.length === DIAGNOSIS_CASES.length && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 p-12 rounded-[3rem] text-center space-y-6 animate-in zoom-in duration-1000">
+            <Trophy className="w-20 h-20 text-emerald-500 mx-auto animate-bounce" />
+            <div className="space-y-2">
+              <h2 className="text-3xl font-black text-white">Mestre do Diagnóstico!</h2>
+              <p className="text-slate-400 max-w-md mx-auto">Você resolveu todos os casos disponíveis no laboratório. Novos casos serão adicionados em breve!</p>
+            </div>
+            <Button 
+              variant="outline" 
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              onClick={() => {
+                localStorage.removeItem('imuno_completed_cases');
+                setCompletedIds([]);
+                showSuccess("Progresso resetado!");
+              }}
+            >
+              <RotateCcw className="mr-2 w-4 h-4" /> RESETAR PROGRESSO
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -140,7 +201,6 @@ const Diagnosis = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Coluna da Esquerda: Prontuário e Pistas */}
         <div className="lg:col-span-7 space-y-6">
           <Card className="bg-white/5 border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl">
             <div className="h-2 w-full bg-emerald-500" />
@@ -198,7 +258,6 @@ const Diagnosis = () => {
           </Card>
         </div>
 
-        {/* Coluna da Direita: Pergunta Final ou Resultado */}
         <div className="lg:col-span-5">
           {showQuestion && !finished ? (
             <Card className="bg-slate-900/80 border-white/10 rounded-[2.5rem] p-8 sticky top-8 animate-in slide-in-from-right duration-500">

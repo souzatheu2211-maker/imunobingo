@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,17 @@ const Index = () => {
   const [roomCode, setRoomCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+        if (data?.full_name) setName(data.full_name);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const generateCode = () => {
     return 'IMUNO-' + Math.floor(1000 + Math.random() * 9000);
@@ -47,10 +58,11 @@ const Index = () => {
       localStorage.setItem('imuno_player_id', player.id);
       localStorage.setItem('imuno_player_name', name);
       
-      showSuccess("Sala criada com sucesso!");
+      showSuccess("Sala criada! Compartilhe o código: " + code);
       navigate(`/room/${room.id}`);
     } catch (error: any) {
-      showError("Erro ao criar sala. Verifique se o banco de dados está configurado.");
+      console.error(error);
+      showError("Erro ao criar sala: " + (error.message || "Verifique a conexão com o banco."));
     } finally {
       setLoading(false);
     }
@@ -107,15 +119,6 @@ const Index = () => {
           <p className="text-slate-400 text-lg font-medium max-w-md mx-auto lg:mx-0">
             Crie uma sala estratégica ou junte-se a uma equipe para testar seus conhecimentos em imunologia.
           </p>
-          
-          <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-            <div className="flex items-center gap-2 text-slate-500 text-sm font-bold">
-              <Users className="w-4 h-4" /> 100% Multiplayer
-            </div>
-            <div className="flex items-center gap-2 text-slate-500 text-sm font-bold">
-              <Microscope className="w-4 h-4" /> Base Científica
-            </div>
-          </div>
         </div>
 
         <Card className="bg-white/5 border-white/10 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl overflow-hidden">

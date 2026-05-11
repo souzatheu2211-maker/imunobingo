@@ -19,12 +19,24 @@ import fsssLogo from "@/assets/fsss.png";
 import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import loginBg from "@/assets/login-bg.png";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const queryClient = new QueryClient();
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
+const Layout = ({ children, session }: { children: React.ReactNode, session: any }) => {
   const location = useLocation();
   const isRoom = location.pathname.startsWith('/room/');
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    if (session?.user) {
+      const fetchProfile = async () => {
+        const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        setProfile(data);
+      };
+      fetchProfile();
+    }
+  }, [session]);
 
   const navItems = [
     { path: '/home', icon: HomeIcon, label: 'Início' },
@@ -37,6 +49,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
+  const userAvatar = profile?.avatar_url || session?.user?.user_metadata?.avatar_url;
+  const userName = profile?.full_name || session?.user?.user_metadata?.full_name || 'Usuário';
 
   if (isRoom) {
     return (
@@ -56,26 +71,36 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Logo Superior Esquerdo */}
-      <div className="absolute top-6 left-6 z-50 opacity-40 hover:opacity-100 transition-opacity hidden md:block">
-        <img src={fsssLogo} alt="FSSS" className="h-12 object-contain" />
-      </div>
-
       {/* Sidebar Desktop Glass */}
       <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
-        <div className="mb-12 mt-16">
-          <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
+        <div className="mb-10 mt-8">
+          <h1 className="text-2xl font-black text-white tracking-tighter flex items-center gap-2">
             <Sparkles className="text-violet-500 animate-pulse" />
             IMUNO<span className="text-violet-500">BINGO</span>
           </h1>
         </div>
-        <nav className="flex-1 space-y-3">
+
+        {/* User Profile Section in Sidebar */}
+        <div className="mb-8 p-4 bg-white/5 rounded-3xl border border-white/10 flex items-center gap-3">
+          <Avatar className="h-10 w-10 border border-white/20">
+            <AvatarImage src={userAvatar} className="object-cover" />
+            <AvatarFallback className="bg-violet-600 text-xs font-black text-white">
+              {userName[0]?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-white font-bold text-sm truncate">{userName}</span>
+            <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Online</span>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-2">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all duration-300 group",
+                "flex items-center gap-4 px-5 py-3.5 rounded-2xl font-bold transition-all duration-300 group",
                 location.pathname === item.path 
                   ? "bg-violet-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.4)] scale-105" 
                   : "text-slate-400 hover:bg-white/5 hover:text-white"
@@ -87,14 +112,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           ))}
         </nav>
         
-        <div className="mt-auto pt-8 border-t border-white/5">
+        <div className="mt-auto pt-6 border-t border-white/5">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center gap-4 px-5 py-4 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-2xl transition-all font-bold"
+            className="w-full flex items-center gap-4 px-5 py-3.5 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-2xl transition-all font-bold"
           >
-            <LogOut className="w-5 h-5" /> Sair da Conta
+            <LogOut className="w-5 h-5" /> Sair
           </button>
-          <div className="mt-6 opacity-30 scale-75 origin-left">
+          <div className="mt-4 opacity-30 scale-75 origin-left">
             <Credits />
           </div>
         </div>
@@ -154,12 +179,12 @@ const App = () => {
             <Route path="/welcome" element={!session ? <Welcome /> : <Navigate to="/home" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" />} />
             
-            <Route path="/home" element={session ? <Layout><Home /></Layout> : <Navigate to="/login" />} />
-            <Route path="/bingo" element={session ? <Layout><Index /></Layout> : <Navigate to="/login" />} />
-            <Route path="/room/:id" element={session ? <Layout><Room /></Layout> : <Navigate to="/login" />} />
-            <Route path="/studies" element={session ? <Layout><Studies /></Layout> : <Navigate to="/login" />} />
-            <Route path="/profile" element={session ? <Layout><Profile /></Layout> : <Navigate to="/login" />} />
-            <Route path="/admin" element={session ? <Layout><Admin /></Layout> : <Navigate to="/login" />} />
+            <Route path="/home" element={session ? <Layout session={session}><Home /></Layout> : <Navigate to="/login" />} />
+            <Route path="/bingo" element={session ? <Layout session={session}><Index /></Layout> : <Navigate to="/login" />} />
+            <Route path="/room/:id" element={session ? <Layout session={session}><Room /></Layout> : <Navigate to="/login" />} />
+            <Route path="/studies" element={session ? <Layout session={session}><Studies /></Layout> : <Navigate to="/login" />} />
+            <Route path="/profile" element={session ? <Layout session={session}><Profile /></Layout> : <Navigate to="/login" />} />
+            <Route path="/admin" element={session ? <Layout session={session}><Admin /></Layout> : <Navigate to="/login" />} />
 
             <Route path="/" element={<Navigate to={session ? "/home" : "/welcome"} />} />
             <Route path="*" element={<NotFound />} />

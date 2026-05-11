@@ -24,8 +24,8 @@ const Profile = () => {
     if (user) {
       const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(data);
-      setFullName(data?.full_name || '');
-      setCourse(data?.course || '');
+      setFullName(data?.full_name || user.user_metadata?.full_name || '');
+      setCourse(data?.course || user.user_metadata?.course || '');
     }
     setLoading(false);
   };
@@ -34,7 +34,7 @@ const Profile = () => {
     try {
       setUploading(true);
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Você deve selecionar uma imagem para fazer o upload.');
+        throw new Error('Selecione uma imagem.');
       }
 
       const file = event.target.files[0];
@@ -43,13 +43,12 @@ const Profile = () => {
       
       if (!user) throw new Error("Usuário não autenticado.");
 
-      // Organizando por pasta com o ID do usuário para segurança
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -57,15 +56,22 @@ const Profile = () => {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      const { error: updateError } = await supabase
+      // Atualiza Tabela Profiles
+      await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      // Atualiza Metadados do Auth (Persistência extra)
+      await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
 
       setProfile({ ...profile, avatar_url: publicUrl });
       showSuccess("Foto de perfil atualizada!");
+      
+      // Força atualização da página para refletir em todos os componentes
+      window.location.reload();
     } catch (error: any) {
       showError(error.message);
     } finally {
@@ -76,11 +82,17 @@ const Profile = () => {
   const updateProfile = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { error } = await supabase.from('profiles').update({
       full_name: fullName,
       course: course,
       updated_at: new Date()
-    }).eq('id', user?.id);
+    }).eq('id', user.id);
+
+    await supabase.auth.updateUser({
+      data: { full_name: fullName, course: course }
+    });
 
     if (error) showError(error.message);
     else showSuccess("Perfil atualizado!");

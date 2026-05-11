@@ -349,6 +349,31 @@ const Room = () => {
             </CardContent>
           </Card>
 
+          {/* Histórico de Descobertas (Movido para cima da cartela) */}
+          <Card className="bg-slate-900/60 border-white/10 rounded-[2.5rem] shadow-2xl backdrop-blur-2xl overflow-hidden border-t-white/20">
+            <CardHeader className="py-4 px-8 border-b border-white/5 bg-white/5">
+              <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
+                <History className="w-4 h-4 text-pink-500" /> Descobertas (Termos Sorteados)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <ScrollArea className="h-[120px]">
+                <div className="flex flex-wrap gap-2">
+                  {drawHistory.map((d, i) => (
+                    <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-slate-300 font-bold py-2 px-4 rounded-xl text-[10px] hover:bg-white/10 transition-colors">
+                      {d.answer}
+                    </Badge>
+                  ))}
+                  {drawHistory.length === 0 && (
+                    <div className="w-full text-center py-6 text-slate-600 italic text-xs font-medium">
+                      Nenhuma carta sorteada ainda.
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
           {/* Área da Cartela */}
           <div className="relative py-6">
             <div className="absolute -inset-4 bg-violet-600/5 rounded-[4rem] blur-3xl pointer-events-none" />
@@ -372,7 +397,7 @@ const Room = () => {
           </div>
         </div>
 
-        {/* Coluna Lateral: Ranking e Histórico */}
+        {/* Coluna Lateral: Ranking */}
         <div className="lg:col-span-4 space-y-8">
           
           {/* Ranking */}
@@ -383,7 +408,7 @@ const Room = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[320px]">
+              <ScrollArea className="h-[400px]">
                 <div className="divide-y divide-white/5">
                   {players.sort((a, b) => (b.points || 0) - (a.points || 0)).map((p, idx) => (
                     <div key={p.id} className={cn(
@@ -413,31 +438,6 @@ const Room = () => {
                       </Badge>
                     </div>
                   ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          {/* Histórico */}
-          <Card className="bg-slate-900/60 border-white/10 rounded-[2.5rem] shadow-2xl backdrop-blur-2xl overflow-hidden border-t-white/20">
-            <CardHeader className="py-6 px-8 border-b border-white/5 bg-white/5">
-              <CardTitle className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-3">
-                <History className="w-4 h-4 text-pink-500" /> Descobertas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <ScrollArea className="h-[200px]">
-                <div className="flex flex-wrap gap-2">
-                  {drawHistory.map((d, i) => (
-                    <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-slate-300 font-bold py-2 px-4 rounded-xl text-[10px] hover:bg-white/10 transition-colors">
-                      {d.answer}
-                    </Badge>
-                  ))}
-                  {drawHistory.length === 0 && (
-                    <div className="w-full text-center py-12 text-slate-600 italic text-xs font-medium">
-                      Nenhuma carta sorteada ainda.
-                    </div>
-                  )}
                 </div>
               </ScrollArea>
             </CardContent>

@@ -23,38 +23,50 @@ const BattleArena = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Derivamos o meu jogador da lista de players para garantir reatividade total
   const myPlayer = players.find(p => p.user_id === currentUserId);
 
   useEffect(() => {
     const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/login');
-        return;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+        setCurrentUserId(user.id);
+
+        const { data: roomData, error: roomError } = await supabase
+          .from('battle_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .single();
+
+        if (roomError || !roomData) {
+          showError("Sala não encontrada.");
+          navigate('/battle');
+          return;
+        }
+        setRoom(roomData);
+
+        const { data: playersData } = await supabase
+          .from('battle_players')
+          .select('*')
+          .eq('battle_room_id', roomId);
+        
+        setPlayers(playersData || []);
+
+        if (roomData.status === 'playing') {
+          setCurrentQuestion(BATTLE_QUESTIONS[roomData.current_question_index]);
+        }
+      } catch (error) {
+        console.error("Erro no setup:", error);
+      } finally {
+        setLoading(false);
       }
-      setCurrentUserId(user.id);
-
-      const { data: roomData } = await supabase.from('battle_rooms').select('*').eq('id', roomId).single();
-      if (!roomData) {
-        navigate('/battle');
-        return;
-      }
-      setRoom(roomData);
-
-      const { data: playersData } = await supabase.from('battle_players').select('*').eq('battle_room_id', roomId);
-      setPlayers(playersData || []);
-
-      if (roomData.status === 'playing') {
-        setCurrentQuestion(BATTLE_QUESTIONS[roomData.current_question_index]);
-      }
-
-      setLoading(false);
     };
 
     setup();
 
-    // Canal de sincronização em tempo real
     const channel = supabase.channel(`battle:${roomId}`)
       .on('postgres_changes', { 
         event: '*', 
@@ -62,9 +74,10 @@ const BattleArena = () => {
         table: 'battle_rooms', 
         filter: `id=eq.${roomId}` 
       }, (payload) => {
-        setRoom(payload.new);
-        if (payload.new.status === 'playing') {
-          setCurrentQuestion(BATTLE_QUESTIONS[payload.new.current_question_index]);
+        const updatedRoom = payload.new as any;
+        setRoom(updatedRoom);
+        if (updatedRoom.status === 'playing') {
+          setCurrentQuestion(BATTLE_QUESTIONS[updatedRoom.current_question_index]);
           setTimeLeft(10);
           setAnswered(false);
         }
@@ -77,7 +90,6 @@ const BattleArena = () => {
       }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setPlayers(prev => {
-            // Evita duplicatas se o evento disparar duas vezes
             if (prev.find(p => p.id === payload.new.id)) return prev;
             return [...prev, payload.new];
           });
@@ -104,15 +116,33 @@ const BattleArena = () => {
   }, [timeLeft, room?.status, answered]);
 
   const startBattle = async () => {
-    if (!room || players.length < 2) {
-      showError("Aguarde pelo menos 2 jogadores.");
-      return;
+    try {
+      if (!room) return;
+      
+      if (players.length < 2) {
+        showError("Aguarde pelo menos 2 jogadores para iniciar o combate.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('battle_rooms')
+        .update({ 
+          status: 'playing', 
+          current_question_index: 0 
+        })
+        .eq('id', roomId);
+
+      if (error) throw error;
+      
+      showSuccess("Combate iniciado! Prepare-se!");
+    } catch (error: any) {
+      console.error("Erro ao iniciar batalha:", error);
+      showError("Falha ao iniciar combate: " + error.message);
     }
-    await supabase.from('battle_rooms').update({ status: 'playing', current_question_index: 0 }).eq('id', roomId);
   };
 
   const handleAnswer = async (index: number) => {
-    if (answered || !myPlayer || !room) return;
+    if (answered || !myPlayer || !room || room.status !== 'playing') return;
     setAnswered(true);
     
     const isCorrect = index === currentQuestion?.answer;
@@ -145,7 +175,6 @@ const BattleArena = () => {
       showError("Erro de Defesa!");
     }
 
-    // O Host controla o avanço das rodadas
     if (room.host_id === currentUserId) {
       setTimeout(async () => {
         const nextIndex = room.current_question_index + 1;
@@ -170,7 +199,6 @@ const BattleArena = () => {
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700 p-4 md:p-8">
-      {/* Lista de Combatentes */}
       <div className="lg:col-span-4 space-y-4">
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Combatentes</h2>
         <div className="space-y-3">
@@ -205,7 +233,6 @@ const BattleArena = () => {
           ))}
         </div>
 
-        {/* Log de Combate */}
         <Card className="bg-slate-900/50 border-white/10 rounded-2xl h-40 overflow-hidden">
           <div className="p-3 border-b border-white/5 bg-white/5 flex items-center gap-2">
             <Activity className="w-3 h-3 text-blue-500" />
@@ -222,7 +249,6 @@ const BattleArena = () => {
         </Card>
       </div>
 
-      {/* Área Central da Arena */}
       <div className="lg:col-span-8 space-y-6">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">
@@ -252,7 +278,11 @@ const BattleArena = () => {
               <p className="text-slate-400">A batalha começará assim que o host autorizar.</p>
             </div>
             {room.host_id === currentUserId && (
-              <Button onClick={startBattle} size="lg" className="bg-blue-600 hover:bg-blue-500 font-black px-12 h-16 rounded-2xl shadow-xl shadow-blue-900/20">
+              <Button 
+                onClick={startBattle} 
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-500 font-black px-12 h-16 rounded-2xl shadow-xl shadow-blue-900/20 transition-all active:scale-95"
+              >
                 INICIAR COMBATE
               </Button>
             )}

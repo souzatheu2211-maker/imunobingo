@@ -73,7 +73,7 @@ const Room = () => {
         .single();
 
       if (cardData) {
-        setCardTerms(cardData.card_data);
+        setCardTerms(cardData.card_data.slice(0, 16));
       } else {
         const shuffled = [...IMMUNOLOGY_TERMS].sort(() => 0.5 - Math.random());
         const selected = shuffled.slice(0, 16).map(t => t.answer);

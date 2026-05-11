@@ -22,7 +22,13 @@ const MillionaireLobby = () => {
 
       const { data: room, error: roomError } = await supabase
         .from('millionaire_rooms')
-        .insert({ code, status: 'waiting', host_id: user.id })
+        .insert({ 
+          code, 
+          status: 'waiting', 
+          host_id: user.id,
+          current_question_index: 0,
+          show_answer: false
+        })
         .select()
         .single();
 
@@ -65,13 +71,23 @@ const MillionaireLobby = () => {
 
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
 
-      await supabase.from('millionaire_players').insert({
-        room_id: room.id,
-        user_id: user.id,
-        name: profile?.full_name || 'Candidato',
-        current_value: 0,
-        is_eliminated: false
-      });
+      // Verificar se já está na sala
+      const { data: existing } = await supabase
+        .from('millionaire_players')
+        .select('*')
+        .eq('room_id', room.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!existing) {
+        await supabase.from('millionaire_players').insert({
+          room_id: room.id,
+          user_id: user.id,
+          name: profile?.full_name || 'Candidato',
+          current_value: 0,
+          is_eliminated: false
+        });
+      }
 
       showSuccess("Entrou na sala!");
       navigate(`/millionaire/${room.id}`);

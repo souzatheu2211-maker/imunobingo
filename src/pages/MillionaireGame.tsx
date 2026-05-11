@@ -14,10 +14,12 @@ import {
   LogOut, 
   Monitor, 
   Sparkles, 
-  AlertTriangle,
+  CheckCircle2,
   Eye,
   Zap,
-  Loader2
+  Loader2,
+  ChevronRight,
+  Send
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -39,6 +41,7 @@ const MillionaireGame = () => {
   const [answered, setAnswered] = useState(false);
   const [selectedChoices, setSelectedChoices] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [lifelines, setLifelines] = useState({
     fiftyFifty: true,
     statistics: true,
@@ -51,8 +54,9 @@ const MillionaireGame = () => {
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index || 0];
 
-  const processEndOfTurn = useCallback(async () => {
-    if (answered || !myPlayer || myPlayer.is_eliminated) return;
+  const confirmAnswer = async () => {
+    if (answered || !myPlayer || myPlayer.is_eliminated || selectedChoices.length === 0) return;
+    setSubmitting(true);
     setAnswered(true);
 
     const isCorrect = selectedChoices.includes(currentQuestion.correct);
@@ -64,6 +68,7 @@ const MillionaireGame = () => {
       showSuccess("Resposta Correta!");
     } else {
       eliminated = true;
+      // Patamares de segurança
       if (room.current_question_index >= 10) newValue = 200000;
       else if (room.current_question_index >= 5) newValue = 10000;
       else newValue = 0;
@@ -76,30 +81,29 @@ const MillionaireGame = () => {
       last_answered_index: room.current_question_index
     }).eq('id', myPlayer.id);
 
-    if (room.host_id === currentUserId) {
+    setSubmitting(false);
+  };
+
+  const nextQuestion = async () => {
+    if (room.host_id !== currentUserId) return;
+    
+    if (!room.show_answer) {
+      // Primeiro mostra a resposta
       await supabase.from('millionaire_rooms').update({ show_answer: true }).eq('id', roomId);
-      
-      setTimeout(async () => {
-        const { data: survivors } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('is_eliminated', false);
-        
-        if (!survivors || survivors.length === 0) {
-          await supabase.from('millionaire_rooms').update({ status: 'finished' }).eq('id', roomId);
-          confetti();
-        } else {
-          const nextIndex = room.current_question_index + 1;
-          if (nextIndex >= PRIZES.length) {
-            await supabase.from('millionaire_rooms').update({ status: 'finished' }).eq('id', roomId);
-            confetti();
-          } else {
-            await supabase.from('millionaire_rooms').update({ 
-              current_question_index: nextIndex, 
-              show_answer: false 
-            }).eq('id', roomId);
-          }
-        }
-      }, 5000);
+    } else {
+      // Depois avança
+      const nextIndex = room.current_question_index + 1;
+      if (nextIndex >= PRIZES.length) {
+        await supabase.from('millionaire_rooms').update({ status: 'finished' }).eq('id', roomId);
+        confetti();
+      } else {
+        await supabase.from('millionaire_rooms').update({ 
+          current_question_index: nextIndex, 
+          show_answer: false 
+        }).eq('id', roomId);
+      }
     }
-  }, [answered, myPlayer, room, currentQuestion, selectedChoices, roomId, currentUserId]);
+  };
 
   useEffect(() => {
     const setup = async () => {
@@ -118,15 +122,13 @@ const MillionaireGame = () => {
         // Auto-join se não estiver na lista
         if (playersData && !playersData.find(p => p.user_id === user.id)) {
           const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
-          const { data: newPlayer } = await supabase.from('millionaire_players').insert({
+          await supabase.from('millionaire_players').insert({
             room_id: roomId,
             user_id: user.id,
             name: profile?.full_name || 'Candidato',
             current_value: 0,
             is_eliminated: false
-          }).select().single();
-          
-          if (newPlayer) setPlayers(prev => [...prev, newPlayer]);
+          });
         }
       } catch (error) {
         console.error(error);
@@ -166,10 +168,10 @@ const MillionaireGame = () => {
     if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
       timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
     } else if (timeLeft === 0 && !answered && room?.status === 'playing' && !room.show_answer) {
-      processEndOfTurn();
+      confirmAnswer();
     }
     return () => clearTimeout(timer);
-  }, [timeLeft, room?.status, room?.show_answer, answered, processEndOfTurn]);
+  }, [timeLeft, room?.status, room?.show_answer, answered]);
 
   const handleSelect = (choice: string) => {
     if (answered || myPlayer?.is_eliminated || room?.show_answer) return;
@@ -226,20 +228,11 @@ const MillionaireGame = () => {
     showSuccess("Dupla Chance Ativada! Selecione 2 opções.");
   };
 
-  if (loading || !room) {
+  if (loading || !room || !myPlayer) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
         <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
         <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando com o Lab...</p>
-      </div>
-    );
-  }
-
-  if (!myPlayer) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
-        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Entrando na Sala...</p>
       </div>
     );
   }
@@ -367,7 +360,7 @@ const MillionaireGame = () => {
                 return (
                   <Button
                     key={key}
-                    disabled={myPlayer.is_eliminated || room.show_answer}
+                    disabled={myPlayer.is_eliminated || room.show_answer || answered}
                     onClick={() => handleSelect(key)}
                     className={cn(
                       "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
@@ -382,6 +375,29 @@ const MillionaireGame = () => {
                   </Button>
                 );
               })}
+            </div>
+
+            <div className="flex justify-center gap-4">
+              {!answered && !myPlayer.is_eliminated && !room.show_answer && (
+                <Button 
+                  onClick={confirmAnswer}
+                  disabled={selectedChoices.length === 0 || submitting}
+                  className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg shadow-xl shadow-emerald-900/20"
+                >
+                  {submitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                  CONFIRMAR RESPOSTA
+                </Button>
+              )}
+
+              {room.host_id === currentUserId && (
+                <Button 
+                  onClick={nextQuestion}
+                  className="h-16 px-12 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl text-lg shadow-xl shadow-blue-900/20"
+                >
+                  {room.show_answer ? "PRÓXIMA PERGUNTA" : "REVELAR RESPOSTA"}
+                  <ChevronRight className="ml-2" />
+                </Button>
+              )}
             </div>
           </div>
         ) : room.status === 'finished' ? (

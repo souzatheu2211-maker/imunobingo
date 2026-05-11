@@ -16,28 +16,34 @@ const BattleArena = () => {
   const navigate = useNavigate();
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
-  const [myPlayer, setMyPlayer] = useState<any>(null);
   const [currentQuestion, setCurrentQuestion] = useState<BattleQuestion | null>(null);
   const [timeLeft, setTimeLeft] = useState(10);
   const [answered, setAnswered] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Derivamos o meu jogador da lista de players para garantir reatividade total
+  const myPlayer = players.find(p => p.user_id === currentUserId);
 
   useEffect(() => {
     const setup = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return navigate('/login');
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      setCurrentUserId(user.id);
 
       const { data: roomData } = await supabase.from('battle_rooms').select('*').eq('id', roomId).single();
-      if (!roomData) return navigate('/battle');
+      if (!roomData) {
+        navigate('/battle');
+        return;
+      }
       setRoom(roomData);
 
       const { data: playersData } = await supabase.from('battle_players').select('*').eq('battle_room_id', roomId);
       setPlayers(playersData || []);
-      
-      const me = playersData?.find(p => p.user_id === user.id);
-      if (!me) return navigate('/battle');
-      setMyPlayer(me);
 
       if (roomData.status === 'playing') {
         setCurrentQuestion(BATTLE_QUESTIONS[roomData.current_question_index]);
@@ -48,8 +54,14 @@ const BattleArena = () => {
 
     setup();
 
+    // Canal de sincronização em tempo real
     const channel = supabase.channel(`battle:${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_rooms', filter: `id=eq.${roomId}` }, (payload) => {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'battle_rooms', 
+        filter: `id=eq.${roomId}` 
+      }, (payload) => {
         setRoom(payload.new);
         if (payload.new.status === 'playing') {
           setCurrentQuestion(BATTLE_QUESTIONS[payload.new.current_question_index]);
@@ -57,21 +69,30 @@ const BattleArena = () => {
           setAnswered(false);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'battle_players', filter: `battle_room_id=eq.${roomId}` }, (payload) => {
-        setPlayers(prev => {
-          const index = prev.findIndex(p => p.id === payload.new.id);
-          if (index > -1) {
-            const newPlayers = [...prev];
-            newPlayers[index] = payload.new;
-            return newPlayers;
-          }
-          return [...prev, payload.new];
-        });
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'battle_players', 
+        filter: `battle_room_id=eq.${roomId}` 
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setPlayers(prev => {
+            // Evita duplicatas se o evento disparar duas vezes
+            if (prev.find(p => p.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        } else if (payload.eventType === 'DELETE') {
+          setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
+        }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [roomId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, navigate]);
 
   useEffect(() => {
     if (room?.status === 'playing' && timeLeft > 0 && !answered) {
@@ -83,13 +104,17 @@ const BattleArena = () => {
   }, [timeLeft, room?.status, answered]);
 
   const startBattle = async () => {
-    if (players.length < 2) return showError("Aguarde pelo menos 2 jogadores.");
+    if (!room || players.length < 2) {
+      showError("Aguarde pelo menos 2 jogadores.");
+      return;
+    }
     await supabase.from('battle_rooms').update({ status: 'playing', current_question_index: 0 }).eq('id', roomId);
   };
 
   const handleAnswer = async (index: number) => {
-    if (answered || !myPlayer) return;
+    if (answered || !myPlayer || !room) return;
     setAnswered(true);
+    
     const isCorrect = index === currentQuestion?.answer;
     const responseTime = (10 - timeLeft) * 1000;
 
@@ -103,7 +128,7 @@ const BattleArena = () => {
 
     if (isCorrect) {
       const speedBonus = Math.floor(timeLeft * 2);
-      const damage = myPlayer.attack + speedBonus;
+      const damage = (myPlayer.attack || 10) + speedBonus;
       
       const others = players.filter(p => p.id !== myPlayer.id && p.hp > 0);
       for (const other of others) {
@@ -120,7 +145,8 @@ const BattleArena = () => {
       showError("Erro de Defesa!");
     }
 
-    if (room.host_id === myPlayer.user_id) {
+    // O Host controla o avanço das rodadas
+    if (room.host_id === currentUserId) {
       setTimeout(async () => {
         const nextIndex = room.current_question_index + 1;
         if (nextIndex < BATTLE_QUESTIONS.length) {
@@ -133,10 +159,18 @@ const BattleArena = () => {
     }
   };
 
-  if (loading || !room || !myPlayer) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Entrando na Arena...</div>;
+  if (loading || !room || !myPlayer) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-700 p-4 md:p-8">
+      {/* Lista de Combatentes */}
       <div className="lg:col-span-4 space-y-4">
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Combatentes</h2>
         <div className="space-y-3">
@@ -150,7 +184,7 @@ const BattleArena = () => {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white">
-                      {p.name[0]}
+                      {p.name ? p.name[0] : '?'}
                     </div>
                     <div>
                       <p className="font-black text-sm text-white">{p.name}</p>
@@ -171,6 +205,7 @@ const BattleArena = () => {
           ))}
         </div>
 
+        {/* Log de Combate */}
         <Card className="bg-slate-900/50 border-white/10 rounded-2xl h-40 overflow-hidden">
           <div className="p-3 border-b border-white/5 bg-white/5 flex items-center gap-2">
             <Activity className="w-3 h-3 text-blue-500" />
@@ -187,6 +222,7 @@ const BattleArena = () => {
         </Card>
       </div>
 
+      {/* Área Central da Arena */}
       <div className="lg:col-span-8 space-y-6">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">
@@ -215,7 +251,7 @@ const BattleArena = () => {
               <h2 className="text-3xl font-black text-white">Aguardando Jogadores</h2>
               <p className="text-slate-400">A batalha começará assim que o host autorizar.</p>
             </div>
-            {room.host_id === myPlayer?.user_id && (
+            {room.host_id === currentUserId && (
               <Button onClick={startBattle} size="lg" className="bg-blue-600 hover:bg-blue-500 font-black px-12 h-16 rounded-2xl shadow-xl shadow-blue-900/20">
                 INICIAR COMBATE
               </Button>

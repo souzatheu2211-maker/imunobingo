@@ -54,31 +54,47 @@ const MillionaireGame = () => {
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index || 0];
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'Aguardando';
+      case 'playing': return 'Em Jogo';
+      case 'finished': return 'Finalizado';
+      default: return status;
+    }
+  };
+
   useEffect(() => {
     const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return navigate('/login');
-      setCurrentUserId(user.id);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return navigate('/login');
+        setCurrentUserId(user.id);
 
-      const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
-      if (!roomData) return navigate('/millionaire');
-      setRoom(roomData);
+        const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
+        if (!roomData) return navigate('/millionaire');
+        setRoom(roomData);
 
-      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
-      setPlayers(playersData || []);
-      setLoading(false);
+        const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
+        setPlayers(playersData || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     setup();
 
     const channel = supabase.channel(`millionaire:${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        setRoom(payload.new);
-        setTimeLeft(20);
-        setAnswered(false);
-        setRemovedOptions([]);
-        setLabStats(null);
-        setShowTip(false);
+        if (payload.new) {
+          setRoom(payload.new);
+          setTimeLeft(20);
+          setAnswered(false);
+          setRemovedOptions([]);
+          setLabStats(null);
+          setShowTip(false);
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
@@ -87,7 +103,7 @@ const MillionaireGame = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [roomId]);
+  }, [roomId, navigate]);
 
   useEffect(() => {
     if (room?.status === 'playing' && timeLeft > 0 && !answered && !myPlayer?.is_eliminated) {
@@ -99,8 +115,18 @@ const MillionaireGame = () => {
   }, [timeLeft, room?.status, answered, myPlayer?.is_eliminated]);
 
   const startLevel = async () => {
-    if (room.host_id !== currentUserId) return;
-    await supabase.from('millionaire_rooms').update({ status: 'playing', current_question_index: 0 }).eq('id', roomId);
+    if (!room || room.host_id !== currentUserId) return;
+    
+    const { error } = await supabase
+      .from('millionaire_rooms')
+      .update({ status: 'playing', current_question_index: 0 })
+      .eq('id', roomId);
+
+    if (error) {
+      showError("Erro ao iniciar o jogo.");
+    } else {
+      showSuccess("O desafio começou!");
+    }
   };
 
   const handleAnswer = async (choice: string) => {
@@ -116,7 +142,6 @@ const MillionaireGame = () => {
       showSuccess("Resposta Correta!");
     } else {
       eliminated = true;
-      // Lógica de Checkpoint
       if (room.current_question_index > 9) newValue = 200000;
       else if (room.current_question_index > 4) newValue = 10000;
       else newValue = 0;
@@ -129,7 +154,6 @@ const MillionaireGame = () => {
       last_answered_index: room.current_question_index
     }).eq('id', myPlayer.id);
 
-    // Se for o host, avança a pergunta após delay se houver sobreviventes
     if (room.host_id === currentUserId) {
       setTimeout(async () => {
         const { data: survivors } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('is_eliminated', false);
@@ -150,7 +174,6 @@ const MillionaireGame = () => {
     }
   };
 
-  // Lifelines
   const useFiftyFifty = () => {
     if (!lifelines.fiftyFifty || answered) return;
     const options = ['A', 'B', 'C', 'D'].filter(o => o !== currentQuestion.correct);
@@ -187,7 +210,6 @@ const MillionaireGame = () => {
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
       
-      {/* Sidebar: Prêmios e Jogadores */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5">
@@ -231,10 +253,8 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
-      {/* Main Game Area */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
         
-        {/* Header */}
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <Trophy className="text-yellow-500" />
@@ -247,6 +267,9 @@ const MillionaireGame = () => {
                 <span className="text-yellow-400 font-black text-lg">{timeLeft}s</span>
               </div>
             )}
+            <Badge variant="outline" className="border-yellow-500/30 text-yellow-400 uppercase font-black text-[9px]">
+              {getStatusLabel(room.status)}
+            </Badge>
             <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/millionaire')}>
               <LogOut className="w-4 h-4 mr-2" /> SAIR
             </Button>
@@ -270,7 +293,6 @@ const MillionaireGame = () => {
           </Card>
         ) : room.status === 'playing' ? (
           <div className="space-y-8">
-            {/* Lifelines */}
             <div className="grid grid-cols-4 gap-4">
               <Button 
                 disabled={!lifelines.fiftyFifty || answered || myPlayer.is_eliminated} 
@@ -302,7 +324,6 @@ const MillionaireGame = () => {
               </Button>
             </div>
 
-            {/* Question Card */}
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-yellow-500" />
               <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight tracking-tight">
@@ -327,7 +348,6 @@ const MillionaireGame = () => {
               )}
             </Card>
 
-            {/* Options Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(currentQuestion.options).map(([key, val]) => {
                 const isRemoved = removedOptions.includes(key);

@@ -40,26 +40,27 @@ const Profile = () => {
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const { data: { user } } = await supabase.auth.getUser();
-      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      
+      if (!user) throw new Error("Usuário não autenticado.");
 
-      // Upload da imagem para o bucket 'avatars'
+      // Organizando por pasta com o ID do usuário para segurança
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Pegar a URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Atualizar o perfil com a nova URL
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
-        .eq('id', user?.id);
+        .eq('id', user.id);
 
       if (updateError) throw updateError;
 

@@ -24,7 +24,8 @@ const BattleLobby = () => {
 
   const createBattle = async () => {
     setLoading(true);
-    const code = 'BTL-' + Math.floor(1000 + Math.random() * 9000);
+    // Padronizado para IMUNO-XXXX
+    const code = 'IMUNO-' + Math.floor(1000 + Math.random() * 9000);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -35,7 +36,7 @@ const BattleLobby = () => {
         .insert({ 
           code, 
           status: 'waiting',
-          host_id: user.id // Definindo o host aqui
+          host_id: user.id
         })
         .select()
         .single();

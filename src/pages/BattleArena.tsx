@@ -19,7 +19,8 @@ import {
   Dna, 
   Target, 
   Skull,
-  AlertCircle
+  AlertCircle,
+  LogOut
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -64,6 +65,15 @@ const BattleArena = () => {
     if (percentage > 60) return "bg-emerald-500";
     if (percentage > 30) return "bg-yellow-500";
     return "bg-red-600";
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'Aguardando';
+      case 'playing': return 'Em Combate';
+      case 'finished': return 'Finalizado';
+      default: return status;
+    }
   };
 
   useEffect(() => {
@@ -316,7 +326,7 @@ const BattleArena = () => {
             <ShieldAlert className="text-blue-500" />
             <span className="font-black text-white tracking-tight">ARENA #{room.code}</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {room.status === 'playing' && (
               <div className="flex items-center gap-2 bg-blue-600/20 px-3 py-1 rounded-full border border-blue-500/20">
                 <Timer className="w-4 h-4 text-blue-400" />
@@ -324,8 +334,16 @@ const BattleArena = () => {
               </div>
             )}
             <Badge variant="outline" className="border-blue-500/30 text-blue-400 uppercase font-black text-[9px]">
-              {room.status}
+              {getStatusLabel(room.status)}
             </Badge>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-slate-500 hover:text-red-400 hover:bg-red-400/5 h-8 px-3 rounded-lg font-bold text-[10px]" 
+              onClick={() => navigate('/battle')}
+            >
+              <LogOut className="mr-1.5 h-3 w-3" /> SAIR
+            </Button>
           </div>
         </div>
 

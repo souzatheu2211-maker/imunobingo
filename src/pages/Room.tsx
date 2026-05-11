@@ -44,6 +44,15 @@ const Room = () => {
 
   const playerId = localStorage.getItem('imuno_player_id');
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'waiting': return 'Aguardando';
+      case 'playing': return 'Em Jogo';
+      case 'finished': return 'Finalizado';
+      default: return status;
+    }
+  };
+
   useEffect(() => {
     if (!roomId || !playerId) {
       navigate('/');
@@ -301,6 +310,9 @@ const Room = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <Badge variant="outline" className="border-violet-500/30 text-violet-400 uppercase font-black text-[9px] mr-2">
+                {getStatusLabel(room.status)}
+              </Badge>
               {isHost && room.status === 'waiting' && (
                 <Button onClick={startGame} size="sm" className="bg-emerald-600 hover:bg-emerald-500 font-black px-4 h-10 rounded-lg shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
                   <Play className="mr-2 h-4 w-4" /> INICIAR

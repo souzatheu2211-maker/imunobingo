@@ -44,6 +44,7 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    window.location.href = '/welcome';
   };
 
   if (isGame && location.pathname.split('/').length > 2) {
@@ -64,7 +65,6 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Sidebar Desktop */}
       <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
         <div className="mb-12 mt-10">
           <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
@@ -89,7 +89,6 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
             </Link>
           ))}
         </nav>
-        
         <div className="mt-auto pt-8 border-t border-white/5">
           <button 
             onClick={handleLogout}
@@ -100,7 +99,6 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
         </div>
       </aside>
 
-      {/* Mobile Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/40 border-t border-white/10 backdrop-blur-3xl flex justify-around p-4 z-50">
         {navItems.map((item) => (
           <Link key={item.path} to={item.path} className={cn(
@@ -117,7 +115,6 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
         </button>
       </nav>
 
-      {/* Main Content */}
       <main className="flex-1 p-6 md:p-12 pb-32 md:pb-12 overflow-y-auto relative z-10">
         <div className="max-w-6xl mx-auto flex flex-col min-h-full">
           <div className="flex-1">
@@ -138,33 +135,29 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    const initApp = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         if (session?.user) {
-          localStorage.setItem('imuno_user_id', session.user.id);
           await checkAdminStatus(session.user);
         }
       } catch (error) {
-        console.error("Erro ao verificar sessão:", error);
+        console.error("Erro na inicialização:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    initApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session?.user) {
-        localStorage.setItem('imuno_user_id', session.user.id);
         await checkAdminStatus(session.user);
       } else {
         setIsAdmin(false);
-        localStorage.removeItem('imuno_user_id');
       }
-      // Garante que o loading pare se houver mudança de estado
       setLoading(false);
     });
 
@@ -177,11 +170,9 @@ const App = () => {
         setIsAdmin(true);
         return;
       }
-      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-      if (error) throw error;
+      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
       setIsAdmin(data?.is_admin || false);
-    } catch (error) {
-      console.warn("Perfil não encontrado ou erro ao buscar admin:", error);
+    } catch (e) {
       setIsAdmin(false);
     }
   };
@@ -207,29 +198,31 @@ const App = () => {
         <Sonner position="top-center" />
         <BrowserRouter>
           <Routes>
-            <Route path="/welcome" element={!session ? <Welcome /> : <Navigate to="/home" />} />
-            <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" />} />
+            {/* Se houver sessão, qualquer tentativa de acessar rotas de login/welcome ou a raiz vai para /home */}
+            <Route path="/welcome" element={!session ? <Welcome /> : <Navigate to="/home" replace />} />
+            <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" replace />} />
             
-            <Route path="/home" element={session ? <Layout isAdmin={isAdmin}><Home /></Layout> : <Navigate to="/login" />} />
-            <Route path="/modes" element={session ? <Layout isAdmin={isAdmin}><GameModes /></Layout> : <Navigate to="/login" />} />
-            <Route path="/bingo" element={session ? <Layout isAdmin={isAdmin}><Index /></Layout> : <Navigate to="/login" />} />
-            <Route path="/room/:id" element={session ? <Layout isAdmin={isAdmin}><Room /></Layout> : <Navigate to="/login" />} />
+            <Route path="/home" element={session ? <Layout isAdmin={isAdmin}><Home /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/modes" element={session ? <Layout isAdmin={isAdmin}><GameModes /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/bingo" element={session ? <Layout isAdmin={isAdmin}><Index /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/room/:id" element={session ? <Layout isAdmin={isAdmin}><Room /></Layout> : <Navigate to="/login" replace />} />
             
-            <Route path="/battle" element={session ? <Layout isAdmin={isAdmin}><BattleLobby /></Layout> : <Navigate to="/login" />} />
-            <Route path="/battle/:id" element={session ? <Layout isAdmin={isAdmin}><BattleArena /></Layout> : <Navigate to="/login" />} />
+            <Route path="/battle" element={session ? <Layout isAdmin={isAdmin}><BattleLobby /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/battle/:id" element={session ? <Layout isAdmin={isAdmin}><BattleArena /></Layout> : <Navigate to="/login" replace />} />
             
-            <Route path="/millionaire" element={session ? <Layout isAdmin={isAdmin}><MillionaireLobby /></Layout> : <Navigate to="/login" />} />
-            <Route path="/millionaire/:id" element={session ? <Layout isAdmin={isAdmin}><MillionaireGame /></Layout> : <Navigate to="/login" />} />
-            <Route path="/millionaire/:id/presentation" element={session ? <MillionairePresentation /> : <Navigate to="/login" />} />
+            <Route path="/millionaire" element={session ? <Layout isAdmin={isAdmin}><MillionaireLobby /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/millionaire/:id" element={session ? <Layout isAdmin={isAdmin}><MillionaireGame /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/millionaire/:id/presentation" element={session ? <MillionairePresentation /> : <Navigate to="/login" replace />} />
             
-            <Route path="/diagnosis" element={session ? <Layout isAdmin={isAdmin}><Diagnosis /></Layout> : <Navigate to="/login" />} />
+            <Route path="/diagnosis" element={session ? <Layout isAdmin={isAdmin}><Diagnosis /></Layout> : <Navigate to="/login" replace />} />
             
-            <Route path="/studies" element={session ? <Layout isAdmin={isAdmin}><Studies /></Layout> : <Navigate to="/login" />} />
-            <Route path="/profile" element={session ? <Layout isAdmin={isAdmin}><Profile /></Layout> : <Navigate to="/login" />} />
-            <Route path="/admin" element={session ? <Layout isAdmin={isAdmin}><Admin /></Layout> : <Navigate to="/login" />} />
+            <Route path="/studies" element={session ? <Layout isAdmin={isAdmin}><Studies /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/profile" element={session ? <Layout isAdmin={isAdmin}><Profile /></Layout> : <Navigate to="/login" replace />} />
+            <Route path="/admin" element={session ? <Layout isAdmin={isAdmin}><Admin /></Layout> : <Navigate to="/login" replace />} />
 
-            <Route path="/" element={<Navigate to={session ? "/home" : "/welcome"} />} />
-            <Route path="*" element={<NotFound />} />
+            {/* Redirecionamento global: se atualizar a página e tiver sessão, vai para /home */}
+            <Route path="/" element={session ? <Navigate to="/home" replace /> : <Navigate to="/welcome" replace />} />
+            <Route path="*" element={session ? <Navigate to="/home" replace /> : <NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

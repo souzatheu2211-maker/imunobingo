@@ -139,13 +139,18 @@ const App = () => {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session?.user) {
-        localStorage.setItem('imuno_user_id', session.user.id);
-        await checkAdminStatus(session.user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        if (session?.user) {
+          localStorage.setItem('imuno_user_id', session.user.id);
+          await checkAdminStatus(session.user);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar sessão:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkSession();
@@ -159,18 +164,26 @@ const App = () => {
         setIsAdmin(false);
         localStorage.removeItem('imuno_user_id');
       }
+      // Garante que o loading pare se houver mudança de estado
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const checkAdminStatus = async (user: any) => {
-    if (user.email === 'theu@imuno.com') {
-      setIsAdmin(true);
-      return;
+    try {
+      if (user.email === 'theu@imuno.com') {
+        setIsAdmin(true);
+        return;
+      }
+      const { data, error } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      if (error) throw error;
+      setIsAdmin(data?.is_admin || false);
+    } catch (error) {
+      console.warn("Perfil não encontrado ou erro ao buscar admin:", error);
+      setIsAdmin(false);
     }
-    const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-    setIsAdmin(data?.is_admin || false);
   };
 
   if (loading) {

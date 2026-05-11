@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQuestions';
@@ -20,8 +20,8 @@ import {
   Loader2,
   ChevronRight,
   Send,
-  AlertCircle,
-  XCircle
+  XCircle,
+  Ghost
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -60,7 +60,6 @@ const MillionaireGame = () => {
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
 
-        // Host gerencia a transição para Reveal
         if (remaining === 0 && room.host_id === currentUserId) {
           handleRevealPhase();
         }
@@ -77,18 +76,15 @@ const MillionaireGame = () => {
     };
   }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId]);
 
-  // Lógica do Host para Revelar Respostas
   const handleRevealPhase = async () => {
     if (room.host_id !== currentUserId) return;
 
-    // 1. Buscar todas as respostas da rodada
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
       .eq('room_id', roomId)
       .eq('question_index', room.current_question_index);
 
-    // 2. Atualizar status de cada jogador
     for (const player of players) {
       if (player.is_eliminated) continue;
 
@@ -101,7 +97,6 @@ const MillionaireGame = () => {
       if (isCorrect) {
         newValue = PRIZES[room.current_question_index];
       } else {
-        // Patamares de segurança
         if (room.current_question_index >= 10) newValue = 200000;
         else if (room.current_question_index >= 5) newValue = 10000;
         else newValue = 0;
@@ -114,10 +109,8 @@ const MillionaireGame = () => {
       }).eq('id', player.id);
     }
 
-    // 3. Mudar fase da sala
     await supabase.from('millionaire_rooms').update({ phase: 'reveal' }).eq('id', roomId);
 
-    // 4. Agendar próxima rodada ou fim
     setTimeout(async () => {
       const { data: activePlayers } = await supabase
         .from('millionaire_players')
@@ -157,7 +150,7 @@ const MillionaireGame = () => {
         answer: selectedChoice,
         is_correct: isCorrect
       });
-      showSuccess("Resposta enviada! Aguarde o fim do tempo.");
+      showSuccess("Resposta enviada!");
     } catch (error) {
       showError("Erro ao enviar resposta.");
     } finally {
@@ -199,6 +192,9 @@ const MillionaireGame = () => {
     const channel = supabase.channel(`millionaire_realtime_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
+        if (payload.new.phase === 'question') {
+          setSelectedChoice(null);
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
@@ -254,10 +250,16 @@ const MillionaireGame = () => {
           </div>
           <div className="p-4 space-y-3">
             {players.sort((a, b) => b.current_value - a.current_value).map(p => (
-              <div key={p.id} className="flex items-center justify-between">
+              <div key={p.id} className={cn(
+                "flex items-center justify-between p-2 rounded-xl transition-colors",
+                p.is_eliminated ? "bg-red-500/5" : "bg-white/5"
+              )}>
                 <div className="flex items-center gap-2">
                   <div className={cn("w-2 h-2 rounded-full", p.is_eliminated ? "bg-red-500" : "bg-emerald-500 animate-pulse")} />
-                  <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
+                  <div className="flex flex-col">
+                    <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
+                    {p.is_eliminated && <span className="text-[8px] text-red-500 font-black uppercase">Eliminado</span>}
+                  </div>
                 </div>
                 <span className="text-[10px] font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</span>
               </div>
@@ -275,8 +277,8 @@ const MillionaireGame = () => {
           </div>
           <div className="flex items-center gap-4">
             {myPlayer.is_eliminated && room.status === 'playing' && (
-              <Badge className="bg-red-600/20 text-red-500 border-red-500/30 flex items-center gap-2 px-3 py-1">
-                <Eye className="w-3 h-3" /> MODO ESPECTADOR
+              <Badge className="bg-red-600/20 text-red-500 border-red-500/30 flex items-center gap-2 px-3 py-1 animate-pulse">
+                <Ghost className="w-3 h-3" /> MODO ESPECTADOR
               </Badge>
             )}
             {room.host_id === currentUserId && (
@@ -308,6 +310,13 @@ const MillionaireGame = () => {
           </Card>
         ) : room.phase === 'question' ? (
           <div className="space-y-8">
+            {myPlayer.is_eliminated && (
+              <div className="bg-red-600/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3 text-red-500 animate-in slide-in-from-top duration-500">
+                <AlertCircle className="w-5 h-5" />
+                <p className="text-xs font-black uppercase tracking-widest">Você está no modo espectador. Acompanhe a rodada abaixo.</p>
+              </div>
+            )}
+
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-yellow-500" />
               <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full border border-orange-500/30">
@@ -329,7 +338,8 @@ const MillionaireGame = () => {
                     "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
                     myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white shadow-lg" :
                     selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
-                    "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                    "bg-white/5 border-white/10 text-white hover:bg-white/10",
+                    myPlayer.is_eliminated && "cursor-default opacity-60"
                   )}
                 >
                   <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>
@@ -353,7 +363,7 @@ const MillionaireGame = () => {
 
             {myAnswer && (
               <div className="text-center animate-pulse">
-                <p className="text-emerald-400 font-black uppercase tracking-widest">Resposta enviada! Aguarde os outros jogadores...</p>
+                <p className="text-emerald-400 font-black uppercase tracking-widest">Resposta enviada! Aguarde o fim do tempo...</p>
               </div>
             )}
           </div>
@@ -379,6 +389,9 @@ const MillionaireGame = () => {
                       <span className="text-emerald-400">+ R$ {PRIZES[room.current_question_index].toLocaleString()}</span>
                     </div>
                   ))}
+                  {players.filter(p => p.last_answered_index === room.current_question_index && !p.is_eliminated).length === 0 && (
+                    <p className="text-slate-600 text-xs italic">Ninguém acertou esta rodada.</p>
+                  )}
                 </div>
               </Card>
 
@@ -393,12 +406,15 @@ const MillionaireGame = () => {
                       <span className="text-red-500">ELIMINADO</span>
                     </div>
                   ))}
+                  {players.filter(p => p.is_eliminated && p.last_answered_index === room.current_question_index).length === 0 && (
+                    <p className="text-slate-600 text-xs italic">Ninguém foi eliminado nesta rodada.</p>
+                  )}
                 </div>
               </Card>
             </div>
 
             {myPlayer.is_eliminated && myPlayer.last_answered_index === room.current_question_index && (
-              <div className="bg-red-600 p-8 rounded-[2rem] text-center animate-bounce">
+              <div className="bg-red-600 p-8 rounded-[2rem] text-center animate-bounce shadow-2xl shadow-red-900/40">
                 <h2 className="text-3xl font-black text-white tracking-tighter">VOCÊ FOI ELIMINADO!</h2>
                 <p className="text-white/80 font-bold">Agora você é um espectador.</p>
               </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -17,7 +19,7 @@ const BattleArena = () => {
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<BattleQuestion | null>(null);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(20); // Aumentado para 20s
   const [answered, setAnswered] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ const BattleArena = () => {
         setRoom(updatedRoom);
         if (updatedRoom.status === 'playing') {
           setCurrentQuestion(BATTLE_QUESTIONS[updatedRoom.current_question_index]);
-          setTimeLeft(10);
+          setTimeLeft(20); // Reset para 20s
           setAnswered(false);
         }
       })
@@ -146,7 +148,7 @@ const BattleArena = () => {
     setAnswered(true);
     
     const isCorrect = index === currentQuestion?.answer;
-    const responseTime = (10 - timeLeft) * 1000;
+    const responseTime = (20 - timeLeft) * 1000;
 
     await supabase.from('battle_answers').insert({
       battle_room_id: roomId,
@@ -157,7 +159,7 @@ const BattleArena = () => {
     });
 
     if (isCorrect) {
-      const speedBonus = Math.floor(timeLeft * 2);
+      const speedBonus = Math.floor(timeLeft * 1.5);
       const damage = (myPlayer.attack || 10) + speedBonus;
       
       const others = players.filter(p => p.id !== myPlayer.id && p.hp > 0);
@@ -289,8 +291,8 @@ const BattleArena = () => {
           </Card>
         ) : room.status === 'playing' && currentQuestion ? (
           <div className="space-y-6 animate-in zoom-in duration-500">
-            <Card className="bg-gradient-to-br from-blue-600/20 to-transparent border-white/10 rounded-[2.5rem] p-8 md:p-12">
-              <h2 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight text-center">
+            <Card className="bg-white/90 border-white/20 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
+              <h2 className="text-2xl md:text-4xl font-black text-slate-950 leading-tight tracking-tight text-center">
                 {currentQuestion.question}
               </h2>
             </Card>

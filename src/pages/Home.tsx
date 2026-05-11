@@ -72,11 +72,9 @@ const Home = () => {
       setLoading(false);
     };
     fetchData();
-    // Muda a curiosidade toda vez que entra na aba
     setCuriosity(curiosities[Math.floor(Math.random() * curiosities.length)]);
   }, []);
 
-  // Reflexão do dia baseada na data atual (muda apenas uma vez por dia)
   const getDailyReflection = () => {
     const today = new Date().toDateString();
     const index = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % reflections.length;
@@ -92,37 +90,40 @@ const Home = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Hero Section Melhorado */}
       <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-          <ShieldCheck size={180} />
+          <ShieldCheck size={220} />
         </div>
         
-        <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+        <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
           <div className="relative">
-            <div className="absolute -inset-2 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full blur opacity-40 animate-pulse"></div>
-            <Avatar className="w-28 h-28 border-4 border-white/20 shadow-2xl relative">
+            <div className="absolute -inset-3 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
+            <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-white/20 shadow-2xl relative">
               <AvatarImage src={profile?.avatar_url} className="object-cover" />
-              <AvatarFallback className="bg-violet-600 text-3xl font-black">
+              <AvatarFallback className="bg-violet-600 text-5xl font-black">
                 {profile?.full_name?.[0] || 'U'}
               </AvatarFallback>
             </Avatar>
           </div>
           
-          <div className="text-center md:text-left space-y-2">
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
-              {heroTitle}
-            </h1>
-            <p className="text-xl md:text-2xl text-slate-200 font-bold italic opacity-90 tracking-tight">
+          <div className="text-center md:text-left space-y-4">
+            <div className="space-y-1">
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
+                {heroTitle}
+              </h1>
+              <p className="text-2xl md:text-3xl text-violet-400 font-black uppercase tracking-widest opacity-80">
+                {profile?.course || 'Enfermagem'}
+              </p>
+            </div>
+            <p className="text-xl md:text-2xl text-slate-200 font-bold italic opacity-90 tracking-tight max-w-xl">
               {isProfessor 
-                ? "Coordenando a defesa do conhecimento." 
-                : `A força da ${profile?.course || 'Enfermagem'} em suas mãos.`}
+                ? "Coordenando a defesa do conhecimento e moldando o futuro da saúde." 
+                : "A ciência da vida em suas mãos. Prepare-se para ser a elite da saúde."}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {[
           { icon: Trophy, color: "blue", val: stats.gamesPlayed, label: "Partidas" },
@@ -142,7 +143,6 @@ const Home = () => {
         ))}
       </div>
 
-      {/* Cards de Conteúdo */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl hover:bg-white/10 transition-all overflow-hidden">
           <div className="h-1.5 w-full bg-violet-500" />

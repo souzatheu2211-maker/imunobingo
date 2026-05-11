@@ -56,14 +56,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Logo Superior Esquerdo Fixo */}
-      <div className="fixed top-6 left-6 z-50 opacity-60 hover:opacity-100 transition-opacity hidden md:block">
-        <img src={fsssLogo} alt="FSSS" className="h-14 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
+      {/* Logo Superior Esquerdo Fixo em todas as telas */}
+      <div className="fixed top-6 left-6 z-[60] opacity-80 hover:opacity-100 transition-opacity">
+        <img src={fsssLogo} alt="FSSS" className="h-12 md:h-16 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
       </div>
 
       {/* Sidebar Desktop Glass */}
       <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
-        <div className="mb-12 mt-16">
+        <div className="mb-12 mt-20">
           <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
             <Sparkles className="text-violet-500 animate-pulse" />
             IMUNO<span className="text-violet-500">BINGO</span>
@@ -94,9 +94,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           >
             <LogOut className="w-5 h-5" /> Sair da Conta
           </button>
-          <div className="mt-6">
-            <Credits />
-          </div>
         </div>
       </aside>
 
@@ -122,11 +119,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="max-w-6xl mx-auto">
           {children}
         </div>
-        {/* Créditos Mobile Fixos no final do scroll */}
-        <div className="md:hidden mt-12 opacity-50">
-          <Credits />
-        </div>
       </main>
+
+      {/* Créditos Fixos no Fundo (Overlay) */}
+      <div className="fixed bottom-6 right-6 z-[60] pointer-events-none md:pointer-events-auto opacity-40 hover:opacity-100 transition-opacity">
+        <Credits />
+      </div>
     </div>
   );
 };

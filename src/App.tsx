@@ -21,7 +21,7 @@ import loginBg from "@/assets/login-bg.png";
 
 const queryClient = new QueryClient();
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
+const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boolean }) => {
   const location = useLocation();
   const isRoom = location.pathname.startsWith('/room/');
 
@@ -30,7 +30,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/bingo', icon: Gamepad2, label: 'Bingo' },
     { path: '/studies', icon: BookOpen, label: 'Estudos' },
     { path: '/profile', icon: User, label: 'Perfil' },
-    { path: '/admin', icon: ShieldCheck, label: 'Admin' },
+    ...(isAdmin ? [{ path: '/admin', icon: ShieldCheck, label: 'Admin' }] : []),
   ];
 
   const handleLogout = async () => {
@@ -125,20 +125,41 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
+      if (session?.user) {
+        await checkAdminStatus(session.user);
+      }
       setLoading(false);
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      if (session?.user) {
+        await checkAdminStatus(session.user);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (user: any) => {
+    if (user.email === 'theu@imuno.com') {
+      setIsAdmin(true);
+      return;
+    }
+    const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+    setIsAdmin(data?.is_admin || false);
+  };
 
   if (loading) return null;
 
@@ -152,12 +173,12 @@ const App = () => {
             <Route path="/welcome" element={!session ? <Welcome /> : <Navigate to="/home" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" />} />
             
-            <Route path="/home" element={session ? <Layout><Home /></Layout> : <Navigate to="/login" />} />
-            <Route path="/bingo" element={session ? <Layout><Index /></Layout> : <Navigate to="/login" />} />
-            <Route path="/room/:id" element={session ? <Layout><Room /></Layout> : <Navigate to="/login" />} />
-            <Route path="/studies" element={session ? <Layout><Studies /></Layout> : <Navigate to="/login" />} />
-            <Route path="/profile" element={session ? <Layout><Profile /></Layout> : <Navigate to="/login" />} />
-            <Route path="/admin" element={session ? <Layout><Admin /></Layout> : <Navigate to="/login" />} />
+            <Route path="/home" element={session ? <Layout isAdmin={isAdmin}><Home /></Layout> : <Navigate to="/login" />} />
+            <Route path="/bingo" element={session ? <Layout isAdmin={isAdmin}><Index /></Layout> : <Navigate to="/login" />} />
+            <Route path="/room/:id" element={session ? <Layout isAdmin={isAdmin}><Room /></Layout> : <Navigate to="/login" />} />
+            <Route path="/studies" element={session ? <Layout isAdmin={isAdmin}><Studies /></Layout> : <Navigate to="/login" />} />
+            <Route path="/profile" element={session ? <Layout isAdmin={isAdmin}><Profile /></Layout> : <Navigate to="/login" />} />
+            <Route path="/admin" element={session ? <Layout isAdmin={isAdmin}><Admin /></Layout> : <Navigate to="/login" />} />
 
             <Route path="/" element={<Navigate to={session ? "/home" : "/welcome"} />} />
             <Route path="*" element={<NotFound />} />

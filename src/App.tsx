@@ -13,9 +13,13 @@ import Room from "./pages/Room";
 import Profile from "./pages/Profile";
 import Studies from "./pages/Studies";
 import Admin from "./pages/Admin";
+import GameModes from "./pages/GameModes";
+import BattleLobby from "./pages/BattleLobby";
+import BattleArena from "./pages/BattleArena";
+import Diagnosis from "./pages/Diagnosis";
 import NotFound from "./pages/NotFound";
 import Credits from "./components/Credits";
-import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles } from "lucide-react";
+import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles, LayoutGrid, ShieldAlert, Microscope } from "lucide-react";
 import { cn } from "@/lib/utils";
 import loginBg from "@/assets/login-bg.png";
 
@@ -23,11 +27,11 @@ const queryClient = new QueryClient();
 
 const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boolean }) => {
   const location = useLocation();
-  const isRoom = location.pathname.startsWith('/room/');
+  const isGame = location.pathname.startsWith('/room/') || location.pathname.startsWith('/battle/');
 
   const navItems = [
     { path: '/home', icon: HomeIcon, label: 'Início' },
-    { path: '/bingo', icon: Gamepad2, label: 'Bingo' },
+    { path: '/modes', icon: LayoutGrid, label: 'Modos' },
     { path: '/studies', icon: BookOpen, label: 'Estudos' },
     { path: '/profile', icon: User, label: 'Perfil' },
     ...(isAdmin ? [{ path: '/admin', icon: ShieldCheck, label: 'Admin' }] : []),
@@ -37,7 +41,7 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
     await supabase.auth.signOut();
   };
 
-  if (isRoom) {
+  if (isGame && location.pathname.split('/').length > 2) {
     return (
       <div className="min-h-screen bg-slate-950 overflow-x-hidden">
         {children}
@@ -55,7 +59,7 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Sidebar Desktop Glass */}
+      {/* Sidebar Desktop */}
       <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
         <div className="mb-12 mt-10">
           <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
@@ -91,7 +95,7 @@ const Layout = ({ children, isAdmin }: { children: React.ReactNode, isAdmin: boo
         </div>
       </aside>
 
-      {/* Mobile Nav Glass Effect */}
+      {/* Mobile Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/40 border-t border-white/10 backdrop-blur-3xl flex justify-around p-4 z-50">
         {navItems.map((item) => (
           <Link key={item.path} to={item.path} className={cn(
@@ -133,6 +137,7 @@ const App = () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       if (session?.user) {
+        localStorage.setItem('imuno_user_id', session.user.id);
         await checkAdminStatus(session.user);
       }
       setLoading(false);
@@ -143,9 +148,11 @@ const App = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session?.user) {
+        localStorage.setItem('imuno_user_id', session.user.id);
         await checkAdminStatus(session.user);
       } else {
         setIsAdmin(false);
+        localStorage.removeItem('imuno_user_id');
       }
     });
 
@@ -174,8 +181,15 @@ const App = () => {
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/home" />} />
             
             <Route path="/home" element={session ? <Layout isAdmin={isAdmin}><Home /></Layout> : <Navigate to="/login" />} />
+            <Route path="/modes" element={session ? <Layout isAdmin={isAdmin}><GameModes /></Layout> : <Navigate to="/login" />} />
             <Route path="/bingo" element={session ? <Layout isAdmin={isAdmin}><Index /></Layout> : <Navigate to="/login" />} />
             <Route path="/room/:id" element={session ? <Layout isAdmin={isAdmin}><Room /></Layout> : <Navigate to="/login" />} />
+            
+            <Route path="/battle" element={session ? <Layout isAdmin={isAdmin}><BattleLobby /></Layout> : <Navigate to="/login" />} />
+            <Route path="/battle/:id" element={session ? <Layout isAdmin={isAdmin}><BattleArena /></Layout> : <Navigate to="/login" />} />
+            
+            <Route path="/diagnosis" element={session ? <Layout isAdmin={isAdmin}><Diagnosis /></Layout> : <Navigate to="/login" />} />
+            
             <Route path="/studies" element={session ? <Layout isAdmin={isAdmin}><Studies /></Layout> : <Navigate to="/login" />} />
             <Route path="/profile" element={session ? <Layout isAdmin={isAdmin}><Profile /></Layout> : <Navigate to="/login" />} />
             <Route path="/admin" element={session ? <Layout isAdmin={isAdmin}><Admin /></Layout> : <Navigate to="/login" />} />

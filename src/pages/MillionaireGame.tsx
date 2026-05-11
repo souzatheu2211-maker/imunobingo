@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQuestions';
@@ -48,33 +48,40 @@ const MillionaireGame = () => {
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index || 0];
 
+  const fetchInitialData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return navigate('/login');
+      setCurrentUserId(user.id);
+
+      const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
+      if (!roomData) return navigate('/millionaire');
+      setRoom(roomData);
+
+      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
+      setPlayers(playersData || []);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [roomId, navigate]);
+
   useEffect(() => {
-    const setup = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return navigate('/login');
-        setCurrentUserId(user.id);
+    fetchInitialData();
 
-        const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
-        if (!roomData) return navigate('/millionaire');
-        setRoom(roomData);
-
-        const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
-        setPlayers(playersData || []);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    setup();
-
-    const channel = supabase.channel(`millionaire:${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        if (payload.new) {
-          setRoom(payload.new);
-          if (!payload.new.show_answer) {
+    const channel = supabase.channel(`millionaire_room_${roomId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'millionaire_rooms', 
+        filter: `id=eq.${roomId}` 
+      }, (payload) => {
+        const updatedRoom = payload.new as any;
+        if (updatedRoom && updatedRoom.id) {
+          setRoom(updatedRoom);
+          // Resetar estados locais se uma nova rodada começou
+          if (updatedRoom.status === 'playing' && !updatedRoom.show_answer) {
             setTimeLeft(20);
             setAnswered(false);
             setSelectedChoice(null);
@@ -83,29 +90,30 @@ const MillionaireGame = () => {
           }
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
-        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'millionaire_players', 
+        filter: `room_id=eq.${roomId}` 
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setPlayers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [roomId, navigate]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, fetchInitialData]);
 
-  useEffect(() => {
-    if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !answered && room?.status === 'playing') {
-      processEndOfTurn();
-    }
-  }, [timeLeft, room?.status, room?.show_answer, answered]);
-
-  const processEndOfTurn = async () => {
+  const processEndOfTurn = useCallback(async () => {
     if (answered) return;
     setAnswered(true);
 
-    // 1. Processar resposta do jogador local (se não estiver eliminado)
+    // 1. Processar resposta do jogador local
     if (myPlayer && !myPlayer.is_eliminated) {
       const isCorrect = selectedChoice === currentQuestion.correct;
       let newValue = myPlayer.current_value;
@@ -129,7 +137,7 @@ const MillionaireGame = () => {
       }).eq('id', myPlayer.id);
     }
 
-    // 2. O Host gerencia o avanço da sala (independente de estar eliminado)
+    // 2. O Host gerencia o avanço da sala
     if (room.host_id === currentUserId) {
       await supabase.from('millionaire_rooms').update({ show_answer: true }).eq('id', roomId);
       
@@ -153,7 +161,16 @@ const MillionaireGame = () => {
         }
       }, 5000);
     }
-  };
+  }, [answered, myPlayer, selectedChoice, currentQuestion, room, roomId, currentUserId]);
+
+  useEffect(() => {
+    if (room?.status === 'playing' && timeLeft > 0 && !room.show_answer) {
+      const timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && !answered && room?.status === 'playing') {
+      processEndOfTurn();
+    }
+  }, [timeLeft, room?.status, room?.show_answer, answered, processEndOfTurn]);
 
   const handleSelect = (choice: string) => {
     if (answered || myPlayer?.is_eliminated || room?.show_answer) return;
@@ -168,6 +185,7 @@ const MillionaireGame = () => {
         current_question_index: 0, 
         show_answer: false 
       }).eq('id', roomId);
+      
       if (error) throw error;
       showSuccess("Jogo Iniciado!");
     } catch (error: any) {
@@ -193,10 +211,16 @@ const MillionaireGame = () => {
     setLifelines(prev => ({ ...prev, statistics: false }));
   };
 
-  if (loading || !room || !myPlayer) return <div className="text-white text-center py-20">Sincronizando...</div>;
+  if (loading || !room || !myPlayer) return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+      <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
+      {/* Sidebar */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5">
@@ -238,6 +262,7 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
+      {/* Main Game Area */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">

@@ -21,7 +21,8 @@ import {
   ChevronRight,
   Send,
   XCircle,
-  Ghost
+  Ghost,
+  AlertCircle
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';

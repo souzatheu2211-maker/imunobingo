@@ -16,236 +16,176 @@ export const DIAGNOSIS_CASES: DiagnosisCase[] = [
   {
     id: "1",
     title: "O Choque do Amendoim",
-    description: "Paciente de 8 anos apresenta urticária generalizada, edema de glote e queda de pressão arterial 10 minutos após ingerir um doce.",
-    symptoms: ["Dispneia", "Hipotensão", "Edema facial"],
+    description: "Paciente de 8 anos apresenta urticária generalizada, edema de glote e queda de pressão arterial 10 minutos após ingerir um doce em uma festa.",
+    symptoms: ["Dispneia", "Hipotensão", "Edema facial", "Urticária"],
     category: "Hipersensibilidade Tipo I",
     questions: [
       {
-        question: "Qual o mecanismo imunológico predominante?",
-        options: ["Imunocomplexos", "IgE e Mastócitos", "Células T citotóxicas", "Citotoxicidade por IgG"],
+        question: "Qual a classe de anticorpo responsável por iniciar esta reação imediata?",
+        options: ["IgG", "IgM", "IgA", "IgE"],
+        answer: 3
+      },
+      {
+        question: "A qual célula o anticorpo mencionado se liga através de receptores de alta afinidade (FcεRI)?",
+        options: ["Neutrófilo", "Mastócito", "Linfócito T", "Macrófago"],
         answer: 1
       },
       {
-        question: "Qual o tratamento imediato de escolha?",
-        options: ["Antibiótico", "Adrenalina", "Antiviral", "Vitamina C"],
+        question: "Qual o principal mediador pré-formado liberado que causa a vasodilatação e o edema?",
+        options: ["Citocina", "Histamina", "Interferon", "Sistema Complemento"],
+        answer: 1
+      },
+      {
+        question: "A queda da pressão arterial indica que a reação tornou-se sistêmica. Como chamamos esse quadro?",
+        options: ["Imunodeficiência", "Autoimunidade", "Anafilaxia", "Opsonização"],
+        answer: 2
+      },
+      {
+        question: "Qual o tratamento de emergência padrão-ouro para reverter o choque e o edema de glote?",
+        options: ["Antibiótico", "Adrenalina (Epinefrina)", "Antiviral", "Vitamina C"],
         answer: 1
       }
     ],
-    explanation: "Trata-se de anafilaxia, uma reação de hipersensibilidade tipo I mediada por IgE que causa liberação massiva de histamina."
+    explanation: "A anafilaxia é uma reação de hipersensibilidade tipo I. A IgE ligada a mastócitos reconhece o alérgeno, causando desgranulação massiva de histamina, resultando em colapso circulatório e obstrução das vias aéreas."
   },
   {
     id: "2",
     title: "A Borboleta no Rosto",
-    description: "Mulher de 25 anos com dor articular, febre e mancha avermelhada em formato de borboleta na face após exposição solar.",
-    symptoms: ["Rash malar", "Artralgia", "Fotossensibilidade"],
+    description: "Mulher de 25 anos com dor articular persistente, febre baixa e uma mancha avermelhada em formato de borboleta na face que piora com o sol.",
+    symptoms: ["Rash malar", "Artralgia", "Fotossensibilidade", "Fadiga"],
     category: "Autoimunidade (Lúpus)",
     questions: [
       {
-        question: "Qual o diagnóstico mais provável?",
-        options: ["Artrite Séptica", "Lúpus Eritematoso Sistêmico", "Dermatite de Contato", "HIV"],
+        question: "O 'rash malar' (mancha em borboleta) é característico de qual patologia autoimune?",
+        options: ["Artrite Reumatoide", "Lúpus Eritematoso Sistêmico", "AIDS", "Psoríase"],
         answer: 1
       },
       {
-        question: "Qual tipo de hipersensibilidade explica o dano tecidual?",
-        options: ["Tipo I", "Tipo II", "Tipo III", "Tipo IV"],
-        answer: 2
+        question: "Qual o mecanismo de dano tecidual predominante nesta doença?",
+        options: ["Ataque direto por células NK", "Deposição de Imunocomplexos (Tipo III)", "Ação de IgE em mastócitos", "Destruição por Neutrófilos"],
+        answer: 1
+      },
+      {
+        question: "Qual exame laboratorial é o 'padrão-ouro' para triagem inicial desta suspeita?",
+        options: ["Hemograma", "FAN (Anticorpos Antinucleares)", "Glicemia", "Ureia e Creatinina"],
+        answer: 1
+      },
+      {
+        question: "A deposição desses complexos nos rins pode causar qual complicação grave?",
+        options: ["Cálculo Renal", "Glomerulonefrite Lúpica", "Infecção Urinária", "Diabetes Insipidus"],
+        answer: 1
+      },
+      {
+        question: "Por que a exposição solar (UV) piora as lesões cutâneas?",
+        options: ["Causa queimadura simples", "Induz apoptose celular e exposição de antígenos nucleares", "O sol mata os anticorpos", "Aumenta a produção de vitamina D"],
+        answer: 1
       }
     ],
-    explanation: "O LES é uma doença autoimune onde imunocomplexos (Tipo III) se depositam nos tecidos, causando inflamação."
+    explanation: "O Lúpus (LES) é uma doença autoimune sistêmica onde anticorpos atacam o próprio núcleo das células. A formação de imunocomplexos (Antígeno-Anticorpo) circula e se deposita em vasos, pele e rins, ativando o complemento e causando inflamação crônica."
   },
   {
     id: "3",
     title: "O Inimigo Invisível",
-    description: "Paciente com infecções oportunistas recorrentes (candidíase oral e pneumonia por fungo). Exames mostram contagem de células T muito baixa.",
-    symptoms: ["Perda de peso", "Linfadenopatia", "Infecções fúngicas"],
+    description: "Paciente apresenta infecções oportunistas recorrentes, como candidíase oral persistente e pneumonia por fungos. Relata perda de peso e suores noturnos.",
+    symptoms: ["Linfadenopatia", "Infecções fúngicas", "Perda de peso", "Leucopenia"],
     category: "Imunodeficiência (HIV)",
     questions: [
       {
-        question: "Qual célula é o alvo principal do vírus HIV?",
-        options: ["Linfócito B", "Linfócito T CD4+", "Neutrófilo", "Macrófago"],
+        question: "Qual o principal alvo celular do vírus HIV no sistema imunológico?",
+        options: ["Linfócito B", "Linfócito T CD4+", "Linfócito T CD8+", "Célula NK"],
+        answer: 1
+      },
+      {
+        question: "O vírus utiliza qual receptor de superfície para entrar nesta célula?",
+        options: ["CD8", "CD4", "MHC II", "BCR"],
+        answer: 1
+      },
+      {
+        question: "A destruição dessas células causa a perda de qual função essencial?",
+        options: ["Fagocitose", "Coordenação da resposta imune adaptativa", "Produção de hemácias", "Coagulação sanguínea"],
+        answer: 1
+      },
+      {
+        question: "Como chamamos as infecções que aproveitam a baixa imunidade para atacar?",
+        options: ["Infecções Primárias", "Infecções Oportunistas", "Infecções Virais", "Infecções Bacterianas"],
+        answer: 1
+      },
+      {
+        question: "Qual o critério laboratorial para definir o estágio de AIDS?",
+        options: ["Presença de febre", "Contagem de CD4 abaixo de 200 células/mm³", "Presença de tosse", "Aumento de Neutrófilos"],
         answer: 1
       }
     ],
-    explanation: "O HIV infecta células CD4+, desestruturando toda a coordenação da resposta imune adaptativa."
+    explanation: "O HIV causa uma imunodeficiência adquirida ao destruir os linfócitos T auxiliares (CD4+). Sem eles, o sistema imune não consegue ativar células B para produzir anticorpos nem células T citotóxicas, deixando o corpo vulnerável a patógenos que normalmente seriam eliminados."
   },
   {
     id: "4",
     title: "Rejeição Pós-Transplante",
-    description: "Paciente submetido a transplante renal há 10 dias apresenta febre e dor no local do enxerto. Biópsia mostra infiltrado de linfócitos.",
-    symptoms: ["Febre", "Oligúria", "Dor local"],
+    description: "Paciente recebeu um transplante renal há 15 dias. Apresenta febre, diminuição do volume urinário e dor intensa sobre o local do enxerto.",
+    symptoms: ["Oligúria", "Febre", "Hipertensão", "Dor no enxerto"],
     category: "Hipersensibilidade Tipo IV",
     questions: [
       {
-        question: "Qual o tipo de rejeição celular predominante?",
-        options: ["Tipo I", "Tipo II", "Tipo III", "Tipo IV"],
+        question: "Qual o tipo de rejeição que ocorre nos primeiros dias/semanas após o transplante?",
+        options: ["Hiperaguda", "Aguda", "Crônica", "Inata"],
+        answer: 1
+      },
+      {
+        question: "Qual o principal mecanismo imunológico envolvido na rejeição aguda celular?",
+        options: ["Anticorpos pré-formados", "Linfócitos T citotóxicos (CD8+)", "Mastócitos", "Complemento"],
+        answer: 1
+      },
+      {
+        question: "O que as células T do receptor reconhecem como 'estranho' no órgão doado?",
+        options: ["Tipo sanguíneo", "Moléculas de MHC (HLA) do doador", "Glicose", "Proteínas do plasma"],
+        answer: 1
+      },
+      {
+        question: "Esta reação é classificada como qual tipo de hipersensibilidade?",
+        options: ["Tipo I", "Tipo II", "Tipo III", "Tipo IV (Tardia)"],
         answer: 3
+      },
+      {
+        question: "Qual a principal estratégia para prevenir ou tratar essa rejeição?",
+        options: ["Antibióticos", "Imunossupressores (ex: Ciclosporina)", "Vitaminas", "Diuréticos"],
+        answer: 1
       }
     ],
-    explanation: "A rejeição aguda é mediada principalmente por células T (Tipo IV) que reconhecem o MHC do doador como estranho."
+    explanation: "A rejeição aguda é mediada principalmente por células T que reconhecem o MHC do doador como não-próprio. Isso desencadeia uma resposta inflamatória citotóxica que ataca os vasos e tecidos do órgão transplantado."
   },
   {
     id: "5",
-    title: "Anemia Hemolítica",
-    description: "Recém-nascido apresenta icterícia grave e anemia logo após o parto. A mãe é Rh negativo e o bebê Rh positivo.",
-    symptoms: ["Icterícia", "Anemia", "Hepatoesplenomegalia"],
+    title: "Anemia Hemolítica do RN",
+    description: "Recém-nascido apresenta icterícia grave (pele amarelada) e anemia profunda logo após o nascimento. A mãe é Rh negativo e o bebê Rh positivo.",
+    symptoms: ["Icterícia", "Anemia", "Hepatoesplenomegalia", "Palidez"],
     category: "Hipersensibilidade Tipo II",
     questions: [
       {
-        question: "Qual o mecanismo de destruição das hemácias?",
-        options: ["Lise por IgE", "Opsonização por IgG e Complemento", "Ataque por Neutrófilos", "Imunocomplexos"],
+        question: "Qual a classe de anticorpo materno que atravessa a placenta e ataca o feto?",
+        options: ["IgM", "IgG", "IgA", "IgE"],
         answer: 1
-      }
-    ],
-    explanation: "A Doença Hemolítica do Recém-Nascido é uma hipersensibilidade tipo II, onde anticorpos maternos destroem as hemácias do feto."
-  },
-  {
-    id: "6",
-    title: "Dermatite de Contato",
-    description: "Paciente apresenta eczema e coceira intensa no pulso após usar um relógio de níquel por 2 dias.",
-    symptoms: ["Prurido", "Eritema", "Vesículas"],
-    category: "Hipersensibilidade Tipo IV",
-    questions: [
+      },
       {
-        question: "Por que a reação demorou 48h para aparecer?",
-        options: ["Produção lenta de anticorpos", "Tempo para ativação e migração de células T", "Liberação lenta de histamina", "Acúmulo de imunocomplexos"],
-        answer: 1
-      }
-    ],
-    explanation: "A hipersensibilidade tipo IV é tardia porque depende da proliferação e migração de células T de memória."
-  },
-  {
-    id: "7",
-    title: "A Resposta à Vacina",
-    description: "Estudante de enfermagem recebe vacina de Hepatite B. Após 1 mês, o exame anti-HBs é positivo.",
-    symptoms: ["Nenhum (Imunidade)"],
-    category: "Memória Imunológica",
-    questions: [
-      {
-        question: "Qual o objetivo principal da vacinação?",
-        options: ["Gerar inflamação aguda", "Gerar células de memória e anticorpos", "Ativar apenas a imunidade inata", "Destruir o fígado"],
-        answer: 1
-      }
-    ],
-    explanation: "A vacina induz uma resposta adaptativa artificial ativa, criando clones de memória para proteção futura."
-  },
-  {
-    id: "8",
-    title: "Inflamação Aguda",
-    description: "Paciente com corte infectado no pé apresenta calor, rubor, tumor e dor no local.",
-    symptoms: ["Calor", "Rubor", "Edema", "Dor"],
-    category: "Imunidade Inata",
-    questions: [
-      {
-        question: "Qual a primeira célula a chegar no local da infecção?",
-        options: ["Linfócito B", "Neutrófilo", "Plasmócito", "Linfócito T"],
-        answer: 1
-      }
-    ],
-    explanation: "Neutrófilos são os 'primeiros respondentes' da imunidade inata, atraídos por quimiocinas para o sítio inflamatório."
-  },
-  {
-    id: "9",
-    title: "Deficiência de Complemento",
-    description: "Criança com infecções recorrentes por bactérias encapsuladas (Neisseria). Exames mostram ausência de C3.",
-    symptoms: ["Meningites recorrentes", "Infecções graves"],
-    category: "Sistema Complemento",
-    questions: [
-      {
-        question: "Qual a função do MAC (Complexo de Ataque à Membrana)?",
-        options: ["Produzir anticorpos", "Furar a membrana do patógeno", "Ativar células T", "Induzir febre"],
-        answer: 1
-      }
-    ],
-    explanation: "O MAC (C5b-C9) forma poros na membrana bacteriana, causando lise osmótica do patógeno."
-  },
-  {
-    id: "10",
-    title: "Infecção Viral",
-    description: "Paciente com gripe apresenta alta produção de proteínas que impedem a replicação viral em células vizinhas.",
-    symptoms: ["Febre", "Mialgia", "Coriza"],
-    category: "Interferons",
-    questions: [
-      {
-        question: "Qual molécula é responsável pelo estado antiviral?",
-        options: ["Interferon Tipo I (Alfa/Beta)", "Histamina", "IgE", "C3b"],
+        question: "Por que a IgG ataca as hemácias do bebê?",
+        options: ["Reconhece o fator Rh como antígeno estranho", "O bebê não tem sangue", "A mãe tem infecção", "O sangue é incompatível com ABO"],
         answer: 0
-      }
-    ],
-    explanation: "Os interferons tipo I são cruciais na defesa antiviral, induzindo resistência em células ainda não infectadas."
-  },
-  {
-    id: "11",
-    title: "Artrite Reumatoide",
-    description: "Idosa com rigidez matinal e deformidade nas articulações das mãos. Presença de Fator Reumatoide no sangue.",
-    symptoms: ["Rigidez matinal", "Deformidade articular"],
-    category: "Autoimunidade",
-    questions: [
+      },
       {
-        question: "O Fator Reumatoide é geralmente um anticorpo de qual classe contra a porção Fc da IgG?",
-        options: ["IgE", "IgM", "IgD", "IgA"],
-        answer: 1
-      }
-    ],
-    explanation: "O Fator Reumatoide é classicamente um anticorpo IgM que se liga à IgG própria, formando imunocomplexos."
-  },
-  {
-    id: "12",
-    title: "Febre Reumática",
-    description: "Criança apresenta problemas cardíacos após uma faringite por Estreptococos não tratada. Anticorpos contra a bactéria atacam o coração.",
-    symptoms: ["Sopro cardíaco", "Poliartrite"],
-    category: "Mimetismo Molecular",
-    questions: [
-      {
-        question: "Como se chama quando um antígeno bacteriano é parecido com um do corpo?",
-        options: ["Opsonização", "Mimetismo Molecular", "Tolerância Central", "Anergia"],
-        answer: 1
-      }
-    ],
-    explanation: "No mimetismo molecular, a resposta imune contra o patógeno cruza com tecidos do hospedeiro por semelhança estrutural."
-  },
-  {
-    id: "13",
-    title: "Agamaglobulinemia",
-    description: "Menino de 2 anos com ausência total de anticorpos no sangue e linfonodos muito pequenos.",
-    symptoms: ["Infecções bacterianas repetitivas", "Ausência de células B"],
-    category: "Imunodeficiência Primária",
-    questions: [
-      {
-        question: "Qual o defeito provável?",
-        options: ["Maturação de células T", "Maturação de células B", "Função de Neutrófilos", "Produção de C3"],
-        answer: 1
-      }
-    ],
-    explanation: "A Agamaglobulinemia de Bruton impede a maturação de pré-células B em células B maduras."
-  },
-  {
-    id: "14",
-    title: "Tuberculose",
-    description: "Paciente com tosse crônica e sudorese noturna. O teste de Mantoux (PPD) apresenta uma pápula endurecida após 72h.",
-    symptoms: ["Tosse", "Febre vespertina", "PPD positivo"],
-    category: "Hipersensibilidade Tipo IV",
-    questions: [
-      {
-        question: "O teste de PPD avalia qual tipo de resposta?",
-        options: ["Humoral (Anticorpos)", "Celular (T CD4+ Th1)", "Inata (NK)", "Alérgica (IgE)"],
-        answer: 1
-      }
-    ],
-    explanation: "O PPD é uma reação de hipersensibilidade tardia que indica memória celular contra o bacilo da TB."
-  },
-  {
-    id: "15",
-    title: "Asma Brônquica",
-    description: "Jovem apresenta sibilância e falta de ar ao entrar em contato com poeira. Melhora com uso de broncodilatador.",
-    symptoms: ["Sibilos", "Tosse seca", "Dispneia"],
-    category: "Hipersensibilidade Tipo I",
-    questions: [
-      {
-        question: "Qual citocina estimula a troca de isotipo para IgE na asma?",
-        options: ["IL-4", "IFN-gama", "IL-12", "TNF-alfa"],
+        question: "Qual o mecanismo de destruição das hemácias opsonizadas?",
+        options: ["Fagocitose e Lise pelo Complemento", "Explosão celular", "Desidratação", "Falta de ferro"],
         answer: 0
+      },
+      {
+        question: "Esta reação é classificada como qual tipo de hipersensibilidade?",
+        options: ["Tipo I", "Tipo II (Citotóxica)", "Tipo III", "Tipo IV"],
+        answer: 1
+      },
+      {
+        question: "Qual medicamento a mãe deve receber em gestações futuras para prevenir isso?",
+        options: ["Ferro", "Imunoglobulina Anti-Rh (RhoGAM)", "Corticoides", "Insulina"],
+        answer: 1
       }
     ],
-    explanation: "A IL-4 produzida por células Th2 é o principal estímulo para que células B produzam IgE."
+    explanation: "A Eritroblastose Fetal ocorre quando anticorpos IgG da mãe Rh- atacam as hemácias Rh+ do feto. É uma hipersensibilidade tipo II, onde o anticorpo se liga diretamente à célula-alvo, levando à sua destruição pelo sistema complemento ou macrófagos."
   }
 ];

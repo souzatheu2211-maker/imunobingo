@@ -104,35 +104,34 @@ const Login = () => {
       <FloatingIcon className="top-10 right-1/2 text-emerald-400" delay="0.8s"><Target size={24} /></FloatingIcon>
       <FloatingIcon className="bottom-10 left-1/2 text-violet-400" delay="2.2s"><Microscope size={34} /></FloatingIcon>
 
-      {/* Logos Aumentadas */}
-      <div className="flex gap-10 mb-8 items-center">
-        <img src={fsssLogo} alt="FSSS" className="h-20 md:h-24 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
-        <img src={enfLogo} alt="Enfermagem" className="h-20 md:h-24 object-contain animate-pulse" style={{ animationDuration: '2.5s' }} />
+      {/* Logos Reduzidas para Mobile */}
+      <div className="flex gap-6 mb-4 items-center">
+        <img src={fsssLogo} alt="FSSS" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+        <img src={enfLogo} alt="Enfermagem" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2.5s' }} />
       </div>
 
-      {/* Card de Login Estreito e Arredondado com Luz Pulsante */}
-      <div className="relative group">
-        {/* Efeito de Luz de Fundo */}
+      {/* Card de Login */}
+      <div className="relative group w-full max-w-[300px]">
         <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-violet-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
         
-        <Card className="w-full max-w-[300px] bg-slate-900/60 border-white/10 backdrop-blur-2xl shadow-2xl z-10 overflow-hidden border-t-white/20 rounded-[2.5rem]">
+        <Card className="w-full bg-slate-900/60 border-white/10 backdrop-blur-2xl shadow-2xl z-10 overflow-hidden border-t-white/20 rounded-[2.5rem]">
           <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 via-violet-500 to-pink-500" />
-          <CardHeader className="text-center pb-2 pt-6">
-            <CardTitle className="text-2xl font-black text-white tracking-tight">
+          <CardHeader className="text-center pb-2 pt-4">
+            <CardTitle className="text-xl font-black text-white tracking-tight">
               IMUNO<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-500">BINGO</span>
             </CardTitle>
-            <p className="text-slate-400 text-[10px] mt-1 uppercase tracking-widest font-bold">
+            <p className="text-slate-400 text-[9px] mt-0.5 uppercase tracking-widest font-bold">
               {isRegister ? 'Nova Conta' : 'Acesso Restrito'}
             </p>
           </CardHeader>
-          <CardContent className="pt-4 px-6 pb-8">
+          <CardContent className="pt-2 px-6 pb-6">
             {isRegister && (
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-3">
                 <button 
                   type="button"
                   onClick={() => setRole('student')}
                   className={cn(
-                    "flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
+                    "flex-1 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border",
                     role === 'student' ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-slate-500"
                   )}
                 >
@@ -142,7 +141,7 @@ const Login = () => {
                   type="button"
                   onClick={() => setRole('professor')}
                   className={cn(
-                    "flex-1 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
+                    "flex-1 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border",
                     role === 'professor' ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-slate-500"
                   )}
                 >
@@ -151,14 +150,14 @@ const Login = () => {
               </div>
             )}
 
-            <form onSubmit={handleAuth} className="space-y-4">
+            <form onSubmit={handleAuth} className="space-y-3">
               {isRegister && (
                 <>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
                     <Input 
                       placeholder="Nome Completo" 
-                      className="pl-10 h-11 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
+                      className="pl-9 h-9 bg-white/5 border-white/10 text-white text-xs focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
@@ -166,45 +165,35 @@ const Login = () => {
                   </div>
                   {role === 'student' && (
                     <div className="relative">
-                      <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                      <GraduationCap className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
                       <Input 
                         placeholder="Curso" 
-                        className="pl-10 h-11 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
+                        className="pl-9 h-9 bg-white/5 border-white/10 text-white text-xs focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
                         value={course}
                         onChange={(e) => setCourse(e.target.value)}
                         required
                       />
                     </div>
                   )}
-                  {role === 'professor' && (
-                    <div className="relative">
-                      <Briefcase className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                      <Input 
-                        disabled
-                        value="Docente / Administrador"
-                        className="pl-10 h-11 bg-white/5 border-white/10 text-slate-400 text-sm cursor-not-allowed rounded-xl"
-                      />
-                    </div>
-                  )}
                 </>
               )}
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
                 <Input 
                   type="email"
                   placeholder="E-mail" 
-                  className="pl-10 h-11 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
+                  className="pl-9 h-9 bg-white/5 border-white/10 text-white text-xs focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
                 <Input 
                   type="password"
                   placeholder="Senha" 
-                  className="pl-10 h-11 bg-white/5 border-white/10 text-white text-sm focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
+                  className="pl-9 h-9 bg-white/5 border-white/10 text-white text-xs focus:ring-violet-500 placeholder:text-slate-600 rounded-xl"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -213,7 +202,7 @@ const Login = () => {
               <Button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 font-black text-sm shadow-lg shadow-violet-900/40 transition-all active:scale-95 rounded-xl"
+                className="w-full bg-violet-600 hover:bg-violet-500 text-white h-10 font-black text-xs shadow-lg shadow-violet-900/40 transition-all active:scale-95 rounded-xl"
               >
                 {loading ? '...' : isRegister ? 'CADASTRAR' : 'ENTRAR'}
               </Button>
@@ -221,7 +210,7 @@ const Login = () => {
 
             <button 
               onClick={() => setIsRegister(!isRegister)}
-              className="w-full text-center text-[10px] text-slate-500 mt-6 hover:text-white transition-colors uppercase tracking-wider font-bold"
+              className="w-full text-center text-[9px] text-slate-500 mt-4 hover:text-white transition-colors uppercase tracking-wider font-bold"
             >
               {isRegister ? 'Voltar para Login' : 'Criar nova conta'}
             </button>
@@ -229,7 +218,9 @@ const Login = () => {
         </Card>
       </div>
 
-      <Credits />
+      <div className="mt-6">
+        <Credits />
+      </div>
     </div>
   );
 };

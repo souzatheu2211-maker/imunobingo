@@ -22,19 +22,31 @@ const Home = () => {
     winRate: 0
   });
   const [loading, setLoading] = useState(true);
+  const [curiosity, setCuriosity] = useState('');
 
-  const quotes = [
-    "A imunologia é a ciência que estuda a dança eterna entre o 'eu' e o 'não-eu'.",
-    "Nossas células de defesa são os soldados silenciosos que nunca dormem.",
-    "A vacina é a maior prova de que a inteligência humana pode treinar a natureza.",
-    "Entender o sistema imune é entender a complexidade da vida em sua forma mais pura."
+  const reflections = [
+    "A imunologia é a arte de distinguir o 'eu' do 'outro' para proteger a essência da vida.",
+    "A saúde é o resultado do equilíbrio perfeito entre defesa e tolerância.",
+    "Cada célula do seu corpo é um soldado em uma guerra silenciosa pela sua sobrevivência.",
+    "Entender a imunologia é decifrar o código de segurança mais complexo do universo.",
+    "A vacina é a inteligência humana ensinando a natureza a se proteger.",
+    "O sistema imune não apenas nos defende, ele define quem somos biologicamente."
+  ];
+
+  const curiosities = [
+    "O corpo humano produz cerca de 100 bilhões de novos neutrófilos todos os dias!",
+    "As células de memória podem 'lembrar' de um invasor por décadas, às vezes pela vida toda.",
+    "O sistema linfático não tem uma 'bomba' como o coração; ele depende do movimento dos seus músculos.",
+    "Cerca de 70% a 80% do seu sistema imunológico está localizado no seu intestino.",
+    "O sono é crucial: a falta dele reduz drasticamente a eficácia das suas células T.",
+    "As células NK (Natural Killer) podem detectar e destruir células tumorais antes mesmo de formarem um câncer.",
+    "O leite materno contém anticorpos IgA que protegem o bebê enquanto seu sistema imune amadurece."
   ];
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Buscar Perfil
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
@@ -43,9 +55,7 @@ const Home = () => {
         
         if (profileData) {
           setProfile(profileData);
-
-          // Buscar Estatísticas Reais baseadas no nome do jogador
-          const { data: playerStats, error: statsError } = await supabase
+          const { data: playerStats } = await supabase
             .from('players')
             .select('points')
             .eq('name', profileData.full_name);
@@ -53,10 +63,8 @@ const Home = () => {
           if (playerStats) {
             const totalPoints = playerStats.reduce((acc, curr) => acc + (curr.points || 0), 0);
             const gamesPlayed = playerStats.length;
-            // Estimativa de winRate baseada em pontos altos (ex: > 100 pontos numa sala indica vitória/bom desempenho)
             const wins = playerStats.filter(p => p.points >= 100).length;
             const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
-
             setStats({ gamesPlayed, totalPoints, winRate });
           }
         }
@@ -64,93 +72,102 @@ const Home = () => {
       setLoading(false);
     };
     fetchData();
+    // Muda a curiosidade toda vez que entra na aba
+    setCuriosity(curiosities[Math.floor(Math.random() * curiosities.length)]);
   }, []);
+
+  // Reflexão do dia baseada na data atual (muda apenas uma vez por dia)
+  const getDailyReflection = () => {
+    const today = new Date().toDateString();
+    const index = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % reflections.length;
+    return reflections[index];
+  };
 
   if (loading) return <div className="text-white text-center py-20">Carregando seu painel...</div>;
 
   const isProfessor = profile?.is_admin || profile?.course === 'Professor';
-  const greeting = isProfessor 
-    ? `Olá, Prof. ${profile?.full_name?.split(' ')[0] || 'Docente'}! 🎓`
-    : `Olá, Futuro Profissional de ${profile?.course || 'Saúde'}! 🩺`;
+  const heroTitle = isProfessor 
+    ? `Mestre ${profile?.full_name?.split(' ')[0] || 'Docente'}`
+    : `Líder ${profile?.full_name?.split(' ')[0] || 'Cadete'}`;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-8 md:p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
-          <ShieldCheck size={120} />
+      {/* Hero Section Melhorado */}
+      <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
+          <ShieldCheck size={180} />
         </div>
         
-        <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
-          <Avatar className="w-24 h-24 border-4 border-white/20 shadow-2xl">
-            <AvatarImage src={profile?.avatar_url} className="object-cover" />
-            <AvatarFallback className="bg-violet-600 text-2xl font-black">
-              {profile?.full_name?.[0] || 'U'}
-            </AvatarFallback>
-          </Avatar>
+        <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+          <div className="relative">
+            <div className="absolute -inset-2 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full blur opacity-40 animate-pulse"></div>
+            <Avatar className="w-28 h-28 border-4 border-white/20 shadow-2xl relative">
+              <AvatarImage src={profile?.avatar_url} className="object-cover" />
+              <AvatarFallback className="bg-violet-600 text-3xl font-black">
+                {profile?.full_name?.[0] || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
           
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl md:text-4xl font-black mb-2 tracking-tight">{greeting}</h1>
-            <p className="text-lg text-slate-200 font-medium opacity-80">
-              {profile?.full_name || 'Seu Perfil'} • {isProfessor ? 'Administrador do Sistema' : 'Estudante Ativo'}
+          <div className="text-center md:text-left space-y-2">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">
+              {heroTitle}
+            </h1>
+            <p className="text-xl md:text-2xl text-slate-200 font-bold italic opacity-90 tracking-tight">
+              {isProfessor 
+                ? "Coordenando a defesa do conhecimento." 
+                : `A força da ${profile?.course || 'Enfermagem'} em suas mãos.`}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
-          <div className="bg-blue-500/20 p-3 rounded-2xl"><Trophy className="text-blue-400 w-6 h-6" /></div>
-          <div>
-            <p className="text-2xl font-black text-white">{stats.gamesPlayed}</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Partidas</p>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {[
+          { icon: Trophy, color: "blue", val: stats.gamesPlayed, label: "Partidas" },
+          { icon: Medal, color: "emerald", val: stats.totalPoints, label: "Total XP" },
+          { icon: Target, color: "violet", val: `${stats.winRate}%`, label: "Vitórias" },
+          { icon: Activity, color: "pink", val: "Ativo", label: "Status", pulse: true }
+        ].map((s, i) => (
+          <div key={i} className="bg-white/5 backdrop-blur-xl p-5 md:p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all group">
+            <div className={`bg-${s.color}-500/20 p-3 rounded-2xl group-hover:scale-110 transition-transform`}>
+              <s.icon className={`text-${s.color}-400 w-6 h-6 ${s.pulse ? 'animate-pulse' : ''}`} />
+            </div>
+            <div>
+              <p className="text-xl md:text-2xl font-black text-white">{s.val}</p>
+              <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{s.label}</p>
+            </div>
           </div>
-        </div>
-        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
-          <div className="bg-emerald-500/20 p-3 rounded-2xl"><Medal className="text-emerald-400 w-6 h-6" /></div>
-          <div>
-            <p className="text-2xl font-black text-white">{stats.totalPoints}</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Total XP</p>
-          </div>
-        </div>
-        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
-          <div className="bg-violet-500/20 p-3 rounded-2xl"><Target className="text-violet-400 w-6 h-6" /></div>
-          <div>
-            <p className="text-2xl font-black text-white">{stats.winRate}%</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Taxa de Vitória</p>
-          </div>
-        </div>
-        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
-          <div className="bg-pink-500/20 p-3 rounded-2xl"><Activity className="text-pink-400 w-6 h-6 animate-pulse" /></div>
-          <div>
-            <p className="text-2xl font-black text-white">Online</p>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Status</p>
-          </div>
-        </div>
+        ))}
       </div>
 
+      {/* Cards de Conteúdo */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl hover:bg-white/10 transition-all overflow-hidden">
+          <div className="h-1.5 w-full bg-violet-500" />
           <CardHeader className="pb-2">
-            <CardTitle className="text-violet-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
+            <CardTitle className="text-violet-400 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em]">
               <Quote className="w-4 h-4" /> Reflexão do Dia
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-200 italic text-base leading-relaxed font-medium">
-              "{quotes[Math.floor(Math.random() * quotes.length)]}"
+            <p className="text-slate-200 italic text-lg leading-relaxed font-bold tracking-tight">
+              "{getDailyReflection()}"
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
+        <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl hover:bg-white/10 transition-all overflow-hidden">
+          <div className="h-1.5 w-full bg-emerald-500" />
           <CardHeader className="pb-2">
-            <CardTitle className="text-emerald-400 flex items-center gap-3 text-sm font-black uppercase tracking-widest">
+            <CardTitle className="text-emerald-400 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em]">
               <Sparkles className="w-4 h-4" /> Curiosidade Imunológica
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-slate-200 text-sm leading-relaxed font-medium">
-              O corpo humano produz cerca de 100 bilhões de novos neutrófilos todos os dias para manter sua imunidade inata alerta!
+            <p className="text-slate-200 text-base leading-relaxed font-bold tracking-tight">
+              {curiosity}
             </p>
           </CardContent>
         </Card>

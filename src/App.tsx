@@ -56,9 +56,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Logo Superior Esquerdo */}
-      <div className="absolute top-6 left-6 z-50 opacity-40 hover:opacity-100 transition-opacity hidden md:block">
-        <img src={fsssLogo} alt="FSSS" className="h-12 object-contain" />
+      {/* Logo Superior Esquerdo Fixo */}
+      <div className="fixed top-6 left-6 z-50 opacity-60 hover:opacity-100 transition-opacity hidden md:block">
+        <img src={fsssLogo} alt="FSSS" className="h-14 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
       </div>
 
       {/* Sidebar Desktop Glass */}
@@ -94,20 +94,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           >
             <LogOut className="w-5 h-5" /> Sair da Conta
           </button>
-          <div className="mt-6 opacity-30 scale-75 origin-left">
+          <div className="mt-6">
             <Credits />
           </div>
         </div>
       </aside>
 
-      {/* Mobile Nav Glass */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/80 border-t border-white/10 backdrop-blur-2xl flex justify-around p-4 z-50">
+      {/* Mobile Nav Glass Effect */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/40 border-t border-white/10 backdrop-blur-3xl flex justify-around p-4 z-50">
         {navItems.map((item) => (
           <Link key={item.path} to={item.path} className={cn(
-            "p-3 rounded-2xl transition-all",
-            location.pathname === item.path ? "bg-violet-600 text-white shadow-lg" : "text-slate-500"
+            "p-3 rounded-2xl transition-all duration-500",
+            location.pathname === item.path 
+              ? "bg-violet-600/20 backdrop-blur-xl border border-white/20 text-white shadow-[0_0_15px_rgba(124,58,237,0.3)] scale-110" 
+              : "text-slate-500 hover:text-slate-300"
           )}>
-            <item.icon className="w-6 h-6" />
+            <item.icon className={cn("w-6 h-6", location.pathname === item.path && "animate-pulse")} />
           </Link>
         ))}
         <button onClick={handleLogout} className="p-3 text-slate-500">
@@ -116,9 +118,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 pb-28 md:pb-12 overflow-y-auto relative z-10">
+      <main className="flex-1 p-6 md:p-12 pb-32 md:pb-12 overflow-y-auto relative z-10">
         <div className="max-w-6xl mx-auto">
           {children}
+        </div>
+        {/* Créditos Mobile Fixos no final do scroll */}
+        <div className="md:hidden mt-12 opacity-50">
+          <Credits />
         </div>
       </main>
     </div>

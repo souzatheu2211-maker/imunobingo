@@ -86,8 +86,13 @@ const MillionaireGame = () => {
     setup();
 
     const channel = supabase.channel(`millionaire:${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        if (payload.new) {
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'millionaire_rooms', 
+        filter: `id=eq.${roomId}` 
+      }, (payload) => {
+        if (payload.new && Object.keys(payload.new).length > 0) {
           setRoom(payload.new);
           setTimeLeft(20);
           setAnswered(false);
@@ -96,9 +101,17 @@ const MillionaireGame = () => {
           setShowTip(false);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
-        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'millionaire_players', 
+        filter: `room_id=eq.${roomId}` 
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setPlayers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        }
       })
       .subscribe();
 
@@ -115,17 +128,23 @@ const MillionaireGame = () => {
   }, [timeLeft, room?.status, answered, myPlayer?.is_eliminated]);
 
   const startLevel = async () => {
-    if (!room || room.host_id !== currentUserId) return;
+    if (!room) return;
     
+    // Forçamos a atualização no banco
     const { error } = await supabase
       .from('millionaire_rooms')
-      .update({ status: 'playing', current_question_index: 0 })
+      .update({ 
+        status: 'playing', 
+        current_question_index: 0 
+      })
       .eq('id', roomId);
 
     if (error) {
-      showError("Erro ao iniciar o jogo.");
+      showError("Erro ao iniciar: " + error.message);
     } else {
       showSuccess("O desafio começou!");
+      // Atualização local imediata para evitar delay do Realtime
+      setRoom(prev => ({ ...prev, status: 'playing', current_question_index: 0 }));
     }
   };
 

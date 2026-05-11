@@ -27,7 +27,8 @@ const MillionaireLobby = () => {
           status: 'waiting', 
           host_id: user.id,
           current_question_index: 0,
-          show_answer: false
+          phase: 'waiting',
+          question_started_at: null
         })
         .select()
         .single();
@@ -71,7 +72,6 @@ const MillionaireLobby = () => {
 
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
 
-      // Verificar se já está na sala
       const { data: existing } = await supabase
         .from('millionaire_players')
         .select('*')

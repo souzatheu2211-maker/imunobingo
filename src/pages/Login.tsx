@@ -16,8 +16,7 @@ import {
   Shield,
   Crosshair,
   Target,
-  Microscope,
-  Briefcase
+  Microscope
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import Credits from '@/components/Credits';
@@ -78,7 +77,6 @@ const Login = () => {
         showSuccess("Acesso liberado! Seus anticorpos estão prontos para a batalha. 🚀");
       }
     } catch (error: any) {
-      // Mensagem engraçada para erro de login/senha
       const funnyError = "Ops! 🦠 Seus anticorpos rejeitaram esses dados. Tem certeza que não é um vírus tentando entrar? Revisa o e-mail e a senha!";
       showError(funnyError);
     } finally {
@@ -102,17 +100,17 @@ const Login = () => {
       <FloatingIcon className="top-1/2 left-1/4 text-yellow-500" delay="1.5s"><Zap size={32} /></FloatingIcon>
       <FloatingIcon className="bottom-1/3 right-1/4 text-cyan-500" delay="2.5s"><Wind size={44} /></FloatingIcon>
       <FloatingIcon className="top-1/4 right-1/3 text-blue-400" delay="3s"><Shield size={38} /></FloatingIcon>
-      <FloatingIcon className="bottom-1/4 left-1/3 text-red-400" delay="1.2s"><Crosshair size={30} /></Crosshair>
+      <FloatingIcon className="bottom-1/4 left-1/3 text-red-400" delay="1.2s"><Crosshair size={30} /></FloatingIcon>
       <FloatingIcon className="top-10 right-1/2 text-emerald-400" delay="0.8s"><Target size={24} /></FloatingIcon>
       <FloatingIcon className="bottom-10 left-1/2 text-violet-400" delay="2.2s"><Microscope size={34} /></FloatingIcon>
 
-      {/* Logos Reduzidas para Mobile */}
+      {/* Logos */}
       <div className="flex gap-6 mb-4 items-center">
         <img src={fsssLogo} alt="FSSS" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
         <img src={enfLogo} alt="Enfermagem" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2.5s' }} />
       </div>
 
-      {/* Card de Login - Aumentado para max-w-[400px] */}
+      {/* Card de Login */}
       <div className="relative group w-full max-w-[400px]">
         <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-violet-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
         

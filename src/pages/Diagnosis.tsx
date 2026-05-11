@@ -23,6 +23,8 @@ import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
 
+type CaseResult = 'success' | 'fail';
+
 const Diagnosis = () => {
   const [selectedCase, setSelectedCase] = useState<DiagnosisCase | null>(null);
   const [revealedClues, setRevealedClues] = useState<number>(0);
@@ -30,11 +32,11 @@ const Diagnosis = () => {
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [completedIds, setCompletedIds] = useState<string[]>([]);
+  const [results, setResults] = useState<Record<string, CaseResult>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('imuno_completed_cases');
-    if (saved) setCompletedIds(JSON.parse(saved));
+    const savedResults = localStorage.getItem('imuno_diagnosis_results');
+    if (savedResults) setResults(JSON.parse(savedResults));
     
     const savedScore = localStorage.getItem('imuno_diagnosis_score');
     if (savedScore) setScore(parseInt(savedScore));
@@ -48,13 +50,10 @@ const Diagnosis = () => {
     setSelectedAnswer(null);
   };
 
-  const revealNextClue = () => {
-    if (selectedCase && revealedClues < selectedCase.clues.length) {
-      setRevealedClues(prev => prev + 1);
-      if (revealedClues + 1 === selectedCase.clues.length) {
-        showSuccess("Todas as evidências coletadas!");
-      }
-    }
+  const saveResult = (id: string, status: CaseResult) => {
+    const newResults = { ...results, [id]: status };
+    setResults(newResults);
+    localStorage.setItem('imuno_diagnosis_results', JSON.stringify(newResults));
   };
 
   const handleFinalAnswer = (index: number) => {
@@ -68,20 +67,25 @@ const Diagnosis = () => {
       const newScore = score + finalScore;
       setScore(newScore);
       localStorage.setItem('imuno_diagnosis_score', newScore.toString());
-      
-      if (!completedIds.includes(selectedCase.id)) {
-        const newCompleted = [...completedIds, selectedCase.id];
-        setCompletedIds(newCompleted);
-        localStorage.setItem('imuno_completed_cases', JSON.stringify(newCompleted));
-      }
-      
+      saveResult(selectedCase.id, 'success');
       showSuccess("Diagnóstico Preciso! Parabéns, Doutor(a).");
       confetti();
     } else {
+      saveResult(selectedCase.id, 'fail');
       showError("Diagnóstico Incorreto. Revise as evidências.");
     }
     
     setFinished(true);
+  };
+
+  const resetProgress = () => {
+    if (confirm("Deseja realmente resetar todo o seu progresso de diagnósticos?")) {
+      localStorage.removeItem('imuno_diagnosis_results');
+      localStorage.removeItem('imuno_diagnosis_score');
+      setResults({});
+      setScore(0);
+      showSuccess("Progresso resetado!");
+    }
   };
 
   const reset = () => {
@@ -90,6 +94,9 @@ const Diagnosis = () => {
   };
 
   if (!selectedCase) {
+    const completedCount = Object.keys(results).length;
+    const successCount = Object.values(results).filter(r => r === 'success').length;
+
     return (
       <div className="space-y-10 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row justify-between items-end gap-6">
@@ -103,8 +110,8 @@ const Diagnosis = () => {
           </div>
           <div className="bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-xl flex items-center gap-4">
             <div className="text-right">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Casos Resolvidos</p>
-              <p className="text-xl font-black text-white">{completedIds.length}/{DIAGNOSIS_CASES.length}</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Casos Tentados</p>
+              <p className="text-xl font-black text-white">{completedCount}/{DIAGNOSIS_CASES.length}</p>
             </div>
             <div className="h-10 w-px bg-white/10" />
             <div className="text-right">
@@ -116,19 +123,23 @@ const Diagnosis = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {DIAGNOSIS_CASES.map((c) => {
-            const isCompleted = completedIds.includes(c.id);
+            const result = results[c.id];
             return (
               <Card 
                 key={c.id} 
                 onClick={() => startCase(c)}
                 className={cn(
                   "bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2.5rem] overflow-hidden border-t-white/20 cursor-pointer relative",
-                  isCompleted && "opacity-80"
+                  result === 'success' && "ring-2 ring-emerald-500/50 bg-emerald-500/5",
+                  result === 'fail' && "ring-2 ring-red-500/50 bg-red-500/5"
                 )}
               >
-                {isCompleted && (
-                  <div className="absolute top-6 right-6 bg-emerald-500/20 p-2 rounded-full border border-emerald-500/30 z-10">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                {result && (
+                  <div className={cn(
+                    "absolute top-6 right-6 p-2 rounded-full border z-10",
+                    result === 'success' ? "bg-emerald-500/20 border-emerald-500/30" : "bg-red-500/20 border-red-500/30"
+                  )}>
+                    {result === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-500" />}
                   </div>
                 )}
                 
@@ -136,9 +147,16 @@ const Diagnosis = () => {
                   <div className="flex items-start justify-between">
                     <div className={cn(
                       "w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border",
-                      isCompleted ? "bg-emerald-600/20 border-emerald-500/20" : "bg-emerald-600/20 border-emerald-500/20"
+                      result === 'success' ? "bg-emerald-600/20 border-emerald-500/20" : 
+                      result === 'fail' ? "bg-red-600/20 border-red-500/20" :
+                      "bg-white/5 border-white/10"
                     )}>
-                      <Stethoscope className="text-emerald-400 w-7 h-7" />
+                      <Stethoscope className={cn(
+                        "w-7 h-7",
+                        result === 'success' ? "text-emerald-400" : 
+                        result === 'fail' ? "text-red-400" : 
+                        "text-slate-500"
+                      )} />
                     </div>
                     <div className="text-right">
                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Categoria</span>
@@ -149,7 +167,12 @@ const Diagnosis = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    <h3 className="text-white text-2xl font-black tracking-tight leading-tight group-hover:text-emerald-400 transition-colors">
+                    <h3 className={cn(
+                      "text-2xl font-black tracking-tight leading-tight transition-colors",
+                      result === 'success' ? "text-emerald-400" : 
+                      result === 'fail' ? "text-red-400" : 
+                      "text-white group-hover:text-emerald-400"
+                    )}>
                       {c.title}
                     </h3>
                     <p className="text-slate-400 text-sm leading-relaxed line-clamp-2 font-medium">
@@ -158,7 +181,7 @@ const Diagnosis = () => {
                   </div>
 
                   <div className="flex items-center text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors pt-2">
-                    {isCompleted ? "Revisar Investigação" : "Iniciar Investigação"} <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                    {result ? "Revisar Investigação" : "Iniciar Investigação"} <ChevronRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>
@@ -166,21 +189,17 @@ const Diagnosis = () => {
           })}
         </div>
 
-        {completedIds.length === DIAGNOSIS_CASES.length && (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 p-12 rounded-[3rem] text-center space-y-6 animate-in zoom-in duration-1000">
-            <Trophy className="w-20 h-20 text-emerald-500 mx-auto animate-bounce" />
+        {completedCount === DIAGNOSIS_CASES.length && (
+          <div className="bg-white/5 border border-white/10 p-12 rounded-[3rem] text-center space-y-6 animate-in zoom-in duration-1000">
+            <Trophy className="w-20 h-20 text-yellow-500 mx-auto animate-bounce" />
             <div className="space-y-2">
-              <h2 className="text-3xl font-black text-white">Mestre do Diagnóstico!</h2>
-              <p className="text-slate-400 max-w-md mx-auto">Você resolveu todos os casos disponíveis no laboratório. Novos casos serão adicionados em breve!</p>
+              <h2 className="text-3xl font-black text-white">Ciclo de Estudos Concluído!</h2>
+              <p className="text-slate-400 max-w-md mx-auto">Você analisou todos os casos da unidade. Sua taxa de acerto foi de {Math.round((successCount / completedCount) * 100)}%.</p>
             </div>
             <Button 
               variant="outline" 
-              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-              onClick={() => {
-                localStorage.removeItem('imuno_completed_cases');
-                setCompletedIds([]);
-                showSuccess("Progresso resetado!");
-              }}
+              className="border-white/10 text-slate-400 hover:bg-white/5"
+              onClick={resetProgress}
             >
               <RotateCcw className="mr-2 w-4 h-4" /> RESETAR PROGRESSO
             </Button>

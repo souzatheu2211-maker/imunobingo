@@ -22,7 +22,7 @@ import MillionaireGame from "./pages/MillionaireGame";
 import MillionairePresentation from "./pages/MillionairePresentation";
 import NotFound from "./pages/NotFound";
 import Credits from "./components/Credits";
-import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles, LayoutGrid, ShieldAlert, Microscope } from "lucide-react";
+import { Home as HomeIcon, LogOut, Sparkles, LayoutGrid, BookOpen, User, ShieldCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import loginBg from "@/assets/login-bg.png";
 
@@ -173,7 +173,19 @@ const App = () => {
     setIsAdmin(data?.is_admin || false);
   };
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+        <div className="relative">
+          <div className="absolute -inset-4 bg-violet-600 rounded-full blur-xl opacity-20 animate-pulse"></div>
+          <Loader2 className="w-12 h-12 text-violet-500 animate-spin relative" />
+        </div>
+        <p className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse text-slate-500">
+          Sincronizando Anticorpos...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

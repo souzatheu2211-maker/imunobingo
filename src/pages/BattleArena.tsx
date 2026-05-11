@@ -19,7 +19,7 @@ const BattleArena = () => {
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<BattleQuestion | null>(null);
-  const [timeLeft, setTimeLeft] = useState(20); // Aumentado para 20s
+  const [timeLeft, setTimeLeft] = useState(20);
   const [answered, setAnswered] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ const BattleArena = () => {
         setRoom(updatedRoom);
         if (updatedRoom.status === 'playing') {
           setCurrentQuestion(BATTLE_QUESTIONS[updatedRoom.current_question_index]);
-          setTimeLeft(20); // Reset para 20s
+          setTimeLeft(20);
           setAnswered(false);
         }
       })
@@ -120,26 +120,14 @@ const BattleArena = () => {
   const startBattle = async () => {
     try {
       if (!room) return;
-      
       if (players.length < 2) {
-        showError("Aguarde pelo menos 2 jogadores para iniciar o combate.");
+        showError("Aguarde pelo menos 2 jogadores.");
         return;
       }
-
-      const { error } = await supabase
-        .from('battle_rooms')
-        .update({ 
-          status: 'playing', 
-          current_question_index: 0 
-        })
-        .eq('id', roomId);
-
-      if (error) throw error;
-      
-      showSuccess("Combate iniciado! Prepare-se!");
+      await supabase.from('battle_rooms').update({ status: 'playing', current_question_index: 0 }).eq('id', roomId);
+      showSuccess("Combate iniciado!");
     } catch (error: any) {
-      console.error("Erro ao iniciar batalha:", error);
-      showError("Falha ao iniciar combate: " + error.message);
+      showError("Falha ao iniciar combate.");
     }
   };
 
@@ -150,6 +138,7 @@ const BattleArena = () => {
     const isCorrect = index === currentQuestion?.answer;
     const responseTime = (20 - timeLeft) * 1000;
 
+    // Registro da resposta no banco
     await supabase.from('battle_answers').insert({
       battle_room_id: roomId,
       player_id: myPlayer.id,
@@ -162,6 +151,14 @@ const BattleArena = () => {
       const speedBonus = Math.floor(timeLeft * 1.5);
       const damage = (myPlayer.attack || 10) + speedBonus;
       
+      // ATUALIZAÇÃO OTIMISTA: Reduz vida dos outros localmente na hora
+      setPlayers(prev => prev.map(p => {
+        if (p.id !== myPlayer.id && p.hp > 0) {
+          return { ...p, hp: Math.max(0, p.hp - damage) };
+        }
+        return p;
+      }));
+
       const others = players.filter(p => p.id !== myPlayer.id && p.hp > 0);
       for (const other of others) {
         const newHp = Math.max(0, other.hp - damage);
@@ -172,6 +169,10 @@ const BattleArena = () => {
       showSuccess("Acerto Crítico!");
     } else {
       const newHp = Math.max(0, myPlayer.hp - 10);
+      
+      // ATUALIZAÇÃO OTIMISTA: Reduz sua própria vida localmente na hora
+      setPlayers(prev => prev.map(p => p.id === myPlayer.id ? { ...p, hp: newHp } : p));
+
       await supabase.from('battle_players').update({ hp: newHp }).eq('id', myPlayer.id);
       setLogs(prev => [`Você errou e perdeu 10 HP!`, ...prev.slice(0, 4)]);
       showError("Erro de Defesa!");

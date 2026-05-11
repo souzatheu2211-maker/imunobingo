@@ -5,7 +5,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Quote, 
   Sparkles, 
-  BookOpen, 
   Trophy, 
   Activity, 
   ShieldCheck,
@@ -28,7 +27,6 @@ const Home = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Dados mockados para o gráfico (já que ainda não temos tabela de histórico detalhado)
   const chartData = [
     { name: 'Seg', pontos: 400 },
     { name: 'Ter', pontos: 300 },
@@ -50,8 +48,13 @@ const Home = () => {
     const fetchProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        setProfile(data);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) setProfile(data);
       }
       setLoading(false);
     };
@@ -67,7 +70,6 @@ const Home = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header Personalizado */}
       <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-8 md:p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
           <ShieldCheck size={120} />
@@ -90,7 +92,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Grid de Estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white/5 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 flex items-center gap-4 hover:bg-white/10 transition-all">
           <div className="bg-blue-500/20 p-3 rounded-2xl"><Trophy className="text-blue-400 w-6 h-6" /></div>
@@ -123,7 +124,6 @@ const Home = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Gráfico de Desempenho */}
         <Card className="lg:col-span-2 bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-white flex items-center gap-3 text-lg font-black uppercase tracking-widest">
@@ -160,7 +160,6 @@ const Home = () => {
           </CardContent>
         </Card>
 
-        {/* Reflexão e Curiosidade */}
         <div className="space-y-6">
           <Card className="bg-white/5 border-white/10 backdrop-blur-xl rounded-[2rem] shadow-2xl hover:bg-white/10 transition-all">
             <CardHeader className="pb-2">

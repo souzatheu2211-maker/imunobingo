@@ -104,10 +104,10 @@ const Login = () => {
       <FloatingIcon className="top-10 right-1/2 text-emerald-400" delay="0.8s"><Target size={24} /></FloatingIcon>
       <FloatingIcon className="bottom-10 left-1/2 text-violet-400" delay="2.2s"><Microscope size={34} /></FloatingIcon>
 
-      {/* Logos */}
-      <div className="flex gap-6 mb-4 items-center">
-        <img src={fsssLogo} alt="FSSS" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
-        <img src={enfLogo} alt="Enfermagem" className="h-14 md:h-20 object-contain animate-pulse" style={{ animationDuration: '2.5s' }} />
+      {/* Logos Aumentadas */}
+      <div className="flex gap-8 mb-6 items-center">
+        <img src={fsssLogo} alt="FSSS" className="h-20 md:h-28 object-contain animate-pulse" style={{ animationDuration: '2s' }} />
+        <img src={enfLogo} alt="Enfermagem" className="h-20 md:h-28 object-contain animate-pulse" style={{ animationDuration: '2.5s' }} />
       </div>
 
       {/* Card de Login */}

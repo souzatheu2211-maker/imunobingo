@@ -20,9 +20,9 @@ const Welcome = () => {
       }}
     >
       <div className="z-10 text-center max-w-2xl space-y-6 animate-in fade-in zoom-in duration-1000 flex flex-col items-center">
-        <div className="flex gap-6 justify-center items-center mb-2">
-          <img src={fsssLogo} alt="FSSS" className="h-16 md:h-24 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
-          <img src={enfLogo} alt="Enfermagem" className="h-16 md:h-24 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
+        <div className="flex gap-8 justify-center items-center mb-4">
+          <img src={fsssLogo} alt="FSSS" className="h-24 md:h-36 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
+          <img src={enfLogo} alt="Enfermagem" className="h-24 md:h-36 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" />
         </div>
         
         <div className="space-y-3">

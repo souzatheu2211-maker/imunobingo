@@ -16,7 +16,8 @@ import {
   Sparkles, 
   AlertTriangle,
   Eye,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -51,31 +52,29 @@ const MillionaireGame = () => {
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index || 0];
 
   const processEndOfTurn = useCallback(async () => {
-    if (answered) return;
+    if (answered || !myPlayer || myPlayer.is_eliminated) return;
     setAnswered(true);
 
-    if (myPlayer && !myPlayer.is_eliminated) {
-      const isCorrect = selectedChoices.includes(currentQuestion.correct);
-      let newValue = myPlayer.current_value;
-      let eliminated = false;
+    const isCorrect = selectedChoices.includes(currentQuestion.correct);
+    let newValue = myPlayer.current_value;
+    let eliminated = false;
 
-      if (isCorrect) {
-        newValue = PRIZES[room.current_question_index];
-        showSuccess("Resposta Correta!");
-      } else {
-        eliminated = true;
-        if (room.current_question_index >= 10) newValue = 200000;
-        else if (room.current_question_index >= 5) newValue = 10000;
-        else newValue = 0;
-        showError("Você errou e foi eliminado!");
-      }
-
-      await supabase.from('millionaire_players').update({
-        current_value: newValue,
-        is_eliminated: eliminated,
-        last_answered_index: room.current_question_index
-      }).eq('id', myPlayer.id);
+    if (isCorrect) {
+      newValue = PRIZES[room.current_question_index];
+      showSuccess("Resposta Correta!");
+    } else {
+      eliminated = true;
+      if (room.current_question_index >= 10) newValue = 200000;
+      else if (room.current_question_index >= 5) newValue = 10000;
+      else newValue = 0;
+      showError("Você errou e foi eliminado!");
     }
+
+    await supabase.from('millionaire_players').update({
+      current_value: newValue,
+      is_eliminated: eliminated,
+      last_answered_index: room.current_question_index
+    }).eq('id', myPlayer.id);
 
     if (room.host_id === currentUserId) {
       await supabase.from('millionaire_rooms').update({ show_answer: true }).eq('id', roomId);
@@ -115,6 +114,20 @@ const MillionaireGame = () => {
 
         const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
         setPlayers(playersData || []);
+
+        // Auto-join se não estiver na lista
+        if (playersData && !playersData.find(p => p.user_id === user.id)) {
+          const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+          const { data: newPlayer } = await supabase.from('millionaire_players').insert({
+            room_id: roomId,
+            user_id: user.id,
+            name: profile?.full_name || 'Candidato',
+            current_value: 0,
+            is_eliminated: false
+          }).select().single();
+          
+          if (newPlayer) setPlayers(prev => [...prev, newPlayer]);
+        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -175,11 +188,13 @@ const MillionaireGame = () => {
   const startLevel = async () => {
     if (!room) return;
     try {
-      await supabase.from('millionaire_rooms').update({ 
+      const { error } = await supabase.from('millionaire_rooms').update({ 
         status: 'playing', 
         current_question_index: 0, 
         show_answer: false 
       }).eq('id', roomId);
+      
+      if (error) throw error;
       showSuccess("Jogo Iniciado!");
     } catch (error: any) {
       showError("Erro ao iniciar: " + error.message);
@@ -211,7 +226,23 @@ const MillionaireGame = () => {
     showSuccess("Dupla Chance Ativada! Selecione 2 opções.");
   };
 
-  if (loading || !room || !myPlayer) return <div className="text-white text-center py-20">Sincronizando...</div>;
+  if (loading || !room) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+        <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
+        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando com o Lab...</p>
+      </div>
+    );
+  }
+
+  if (!myPlayer) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+        <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Entrando na Sala...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">

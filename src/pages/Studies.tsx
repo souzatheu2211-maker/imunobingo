@@ -21,8 +21,13 @@ const Studies = () => {
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-      setIsAdmin(data?.is_admin || false);
+      // Verifica se é o e-mail master ou se tem a flag no perfil
+      if (user.email === 'theu@imuno.com') {
+        setIsAdmin(true);
+      } else {
+        const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+        setIsAdmin(data?.is_admin || false);
+      }
     }
   };
 
@@ -32,13 +37,17 @@ const Studies = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este material?")) return;
+    const confirmed = window.confirm("Tem certeza que deseja excluir este material permanentemente?");
+    if (!confirmed) return;
     
-    const { error } = await supabase.from('study_materials').delete().eq('id', id);
-    if (error) showError(error.message);
-    else {
-      showSuccess("Material excluído!");
+    try {
+      const { error } = await supabase.from('study_materials').delete().eq('id', id);
+      if (error) throw error;
+      
+      showSuccess("Material removido com sucesso!");
       fetchMaterials();
+    } catch (error: any) {
+      showError("Erro ao excluir: " + error.message);
     }
   };
 
@@ -49,7 +58,7 @@ const Studies = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      {/* Header Minimalista */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 px-3 py-1 rounded-full">
@@ -71,28 +80,31 @@ const Studies = () => {
         </div>
       </div>
 
-      {/* Grid de Materiais Clean */}
+      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((item) => (
           <Card key={item.id} className="bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20 relative">
-            {/* Botões de Admin (Apenas visíveis para admins) */}
+            
+            {/* Botões de Gestão (Sempre visíveis para Admins) */}
             {isAdmin && (
-              <div className="absolute top-4 right-4 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-4 right-4 flex gap-2 z-30">
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  className="h-8 w-8 bg-white/10 hover:bg-violet-600 text-white rounded-lg"
+                  className="h-9 w-9 bg-slate-900/80 hover:bg-violet-600 text-white rounded-xl border border-white/10 shadow-lg backdrop-blur-md"
                   onClick={() => navigate('/admin')}
+                  title="Editar no Painel"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <Edit2 className="h-4 w-4" />
                 </Button>
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  className="h-8 w-8 bg-white/10 hover:bg-red-600 text-white rounded-lg"
+                  className="h-9 w-9 bg-slate-900/80 hover:bg-red-600 text-white rounded-xl border border-white/10 shadow-lg backdrop-blur-md"
                   onClick={() => handleDelete(item.id)}
+                  title="Excluir Material"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             )}

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, ExternalLink, Search, Sparkles, Trash2, Edit2 } from 'lucide-react';
+import { FileText, ExternalLink, Search, Sparkles, Trash2, Edit2, X, Settings2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { showError, showSuccess } from '@/utils/toast';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 const Studies = () => {
   const [materials, setMaterials] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [managedId, setManagedId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,7 +23,6 @@ const Studies = () => {
   const checkAdmin = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Verifica se é o e-mail master ou se tem a flag no perfil
       if (user.email === 'theu@imuno.com') {
         setIsAdmin(true);
       } else {
@@ -36,7 +37,8 @@ const Studies = () => {
     if (data) setMaterials(data);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     const confirmed = window.confirm("Tem certeza que deseja excluir este material permanentemente?");
     if (!confirmed) return;
     
@@ -45,6 +47,7 @@ const Studies = () => {
       if (error) throw error;
       
       showSuccess("Material removido com sucesso!");
+      setManagedId(null);
       fetchMaterials();
     } catch (error: any) {
       showError("Erro ao excluir: " + error.message);
@@ -83,29 +86,41 @@ const Studies = () => {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((item) => (
-          <Card key={item.id} className="bg-white/5 border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20 relative">
-            
-            {/* Botões de Gestão (Sempre visíveis para Admins) */}
-            {isAdmin && (
-              <div className="absolute top-4 right-4 flex gap-2 z-30">
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-9 w-9 bg-slate-900/80 hover:bg-violet-600 text-white rounded-xl border border-white/10 shadow-lg backdrop-blur-md"
-                  onClick={() => navigate('/admin')}
-                  title="Editar no Painel"
+          <Card 
+            key={item.id} 
+            onClick={() => isAdmin && setManagedId(managedId === item.id ? null : item.id)}
+            className={cn(
+              "bg-white/5 border-white/10 backdrop-blur-xl transition-all duration-500 group rounded-[2rem] overflow-hidden border-t-white/20 relative cursor-pointer",
+              managedId === item.id ? "ring-2 ring-violet-500 scale-[1.02]" : "hover:bg-white/10"
+            )}
+          >
+            {/* Overlay de Gestão para Admins */}
+            {isAdmin && managedId === item.id && (
+              <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 animate-in zoom-in duration-300 p-6">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setManagedId(null); }}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-white"
                 >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-9 w-9 bg-slate-900/80 hover:bg-red-600 text-white rounded-xl border border-white/10 shadow-lg backdrop-blur-md"
-                  onClick={() => handleDelete(item.id)}
-                  title="Excluir Material"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <X className="w-6 h-6" />
+                </button>
+                
+                <p className="text-[10px] font-black text-violet-400 uppercase tracking-[0.3em] mb-2">Gestão de Material</p>
+                
+                <div className="flex flex-col w-full gap-3">
+                  <Button 
+                    className="w-full h-14 bg-violet-600 hover:bg-violet-500 text-white font-black rounded-2xl shadow-xl shadow-violet-900/40"
+                    onClick={(e) => { e.stopPropagation(); navigate('/admin'); }}
+                  >
+                    <Edit2 className="mr-2 h-5 w-5" /> EDITAR NO PAINEL
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    className="w-full h-14 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 font-black rounded-2xl"
+                    onClick={(e) => handleDelete(e, item.id)}
+                  >
+                    <Trash2 className="mr-2 h-5 w-5" /> EXCLUIR PERMANENTE
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -114,7 +129,12 @@ const Studies = () => {
                 <div className="bg-violet-600/20 w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 border border-violet-500/20">
                   <FileText className="text-violet-400 w-7 h-7" />
                 </div>
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">PDF</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">PDF</span>
+                  {isAdmin && (
+                    <Settings2 className="w-4 h-4 text-violet-500/50 animate-pulse" />
+                  )}
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -129,6 +149,7 @@ const Studies = () => {
               <Button 
                 className="w-full h-12 bg-white/5 hover:bg-violet-600 text-white hover:text-white border border-white/10 hover:border-violet-500 rounded-xl font-black text-xs tracking-widest transition-all duration-300 group/btn"
                 asChild
+                onClick={(e) => e.stopPropagation()}
               >
                 <a href={item.file_url} target="_blank" rel="noopener noreferrer">
                   ACESSAR CONTEÚDO

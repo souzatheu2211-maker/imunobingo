@@ -89,16 +89,13 @@ const Home = () => {
     : `Líder ${profile?.full_name?.split(' ')[0] || 'Cadete'}`;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="bg-gradient-to-br from-violet-600/40 to-blue-600/40 backdrop-blur-xl border border-white/10 p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-          <ShieldCheck size={220} />
-        </div>
-        
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Hero Section sem fundo quadrado */}
+      <div className="relative py-8">
         <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
           <div className="relative">
-            <div className="absolute -inset-3 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
-            <Avatar className="w-40 h-40 md:w-48 md:h-48 border-4 border-white/20 shadow-2xl relative">
+            <div className="absolute -inset-4 bg-gradient-to-r from-violet-500 to-blue-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+            <Avatar className="w-40 h-40 md:w-56 md:h-56 border-4 border-white/10 shadow-2xl relative">
               <AvatarImage src={profile?.avatar_url} className="object-cover" />
               <AvatarFallback className="bg-violet-600 text-5xl font-black">
                 {profile?.full_name?.[0] || 'U'}
@@ -108,14 +105,14 @@ const Home = () => {
           
           <div className="text-center md:text-left space-y-4">
             <div className="space-y-1">
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
+              <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter leading-none drop-shadow-2xl">
                 {heroTitle}
               </h1>
-              <p className="text-2xl md:text-3xl text-violet-400 font-black uppercase tracking-widest opacity-80">
+              <p className="text-2xl md:text-3xl text-violet-400 font-black uppercase tracking-widest opacity-90">
                 {profile?.course || 'Enfermagem'}
               </p>
             </div>
-            <p className="text-xl md:text-2xl text-slate-200 font-bold italic opacity-90 tracking-tight max-w-xl">
+            <p className="text-xl md:text-2xl text-slate-300 font-bold italic opacity-90 tracking-tight max-w-2xl leading-relaxed">
               {isProfessor 
                 ? "Coordenando a defesa do conhecimento e moldando o futuro da saúde." 
                 : "A ciência da vida em suas mãos. Prepare-se para ser a elite da saúde."}

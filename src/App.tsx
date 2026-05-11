@@ -15,7 +15,6 @@ import Studies from "./pages/Studies";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Credits from "./components/Credits";
-import fsssLogo from "@/assets/fsss.png";
 import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import loginBg from "@/assets/login-bg.png";
@@ -56,14 +55,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Logo Superior Esquerdo Fixo em todas as telas */}
-      <div className="fixed top-6 left-6 z-[60] opacity-80 hover:opacity-100 transition-opacity">
-        <img src={fsssLogo} alt="FSSS" className="h-12 md:h-16 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
-      </div>
-
       {/* Sidebar Desktop Glass */}
       <aside className="hidden md:flex w-72 bg-white/5 border-r border-white/10 backdrop-blur-2xl flex-col p-8 z-40">
-        <div className="mb-12 mt-20">
+        <div className="mb-12 mt-10">
           <h1 className="text-3xl font-black text-white tracking-tighter flex items-center gap-2">
             <Sparkles className="text-violet-500 animate-pulse" />
             IMUNO<span className="text-violet-500">BINGO</span>
@@ -116,15 +110,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-12 pb-32 md:pb-12 overflow-y-auto relative z-10">
-        <div className="max-w-6xl mx-auto">
-          {children}
+        <div className="max-w-6xl mx-auto flex flex-col min-h-full">
+          <div className="flex-1">
+            {children}
+          </div>
+          <div className="mt-12 pt-8 border-t border-white/5">
+            <Credits />
+          </div>
         </div>
       </main>
-
-      {/* Créditos Fixos no Fundo (Overlay) */}
-      <div className="fixed bottom-6 right-6 z-[60] pointer-events-none md:pointer-events-auto opacity-40 hover:opacity-100 transition-opacity">
-        <Credits />
-      </div>
     </div>
   );
 };

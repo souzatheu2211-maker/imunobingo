@@ -55,16 +55,13 @@ const MillionaireGame = () => {
         if (!user) return navigate('/login');
         setCurrentUserId(user.id);
 
-        // Busca sala
         const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
         if (!roomData) return navigate('/millionaire');
         setRoom(roomData);
 
-        // Busca jogadores
         const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
         setPlayers(playersData || []);
 
-        // Se eu não estiver na lista de jogadores (raro, mas possível por delay), tento me buscar especificamente
         if (!playersData?.find(p => p.user_id === user.id)) {
           const { data: me } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('user_id', user.id).single();
           if (me) setPlayers(prev => [...prev, me]);
@@ -80,11 +77,10 @@ const MillionaireGame = () => {
 
     const channel = supabase.channel(`millionaire_room_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        if (payload.new) {
+        if (payload.new && Object.keys(payload.new).length > 0) {
           const newRoom = payload.new as any;
           setRoom(newRoom);
           
-          // Reset de rodada quando o host avança ou inicia
           if (newRoom.status === 'playing' && !newRoom.show_answer) {
             setTimeLeft(20);
             setAnswered(false);
@@ -176,11 +172,17 @@ const MillionaireGame = () => {
   const startLevel = async () => {
     if (!room) return;
     try {
+      // Atualiza localmente primeiro para evitar delay visual
+      setRoom(prev => ({ ...prev, status: 'playing', current_question_index: 0, show_answer: false }));
+      setTimeLeft(20);
+      setAnswered(false);
+      
       const { error } = await supabase.from('millionaire_rooms').update({ 
         status: 'playing', 
         current_question_index: 0, 
         show_answer: false 
       }).eq('id', roomId);
+      
       if (error) throw error;
       showSuccess("Jogo Iniciado!");
     } catch (error: any) {

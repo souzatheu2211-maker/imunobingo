@@ -22,7 +22,11 @@ import {
   Send,
   XCircle,
   Ghost,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Split,
+  Lightbulb,
+  Repeat
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -46,10 +50,18 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  // Estados das Ajudas
+  const [used5050, setUsed5050] = useState(false);
+  const [usedDouble, setUsedDouble] = useState(false);
+  const [usedTip, setUsedTip] = useState(false);
+  const [hiddenOptions, setHiddenOptions] = useState<string[]>([]);
+  const [showTip, setShowTip] = useState(false);
+  const [doubleChanceActive, setDoubleChanceActive] = useState(false);
+  const [firstWrongDone, setFirstWrongDone] = useState(false);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
   
-  // Busca a pergunta baseada no ID salvo na sala
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
   
@@ -140,6 +152,19 @@ const MillionaireGame = () => {
     }, 5000);
   };
 
+  const handleChoiceClick = (key: string) => {
+    if (myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)) return;
+
+    if (doubleChanceActive && key !== currentQuestion.correct && !firstWrongDone) {
+      setFirstWrongDone(true);
+      setHiddenOptions(prev => [...prev, key]);
+      showError("Primeira chance errada! Você ainda tem mais uma.");
+      return;
+    }
+
+    setSelectedChoice(key);
+  };
+
   const submitAnswer = async () => {
     if (!selectedChoice || myPlayer?.is_eliminated || room?.phase !== 'question' || myAnswer) return;
     setSubmitting(true);
@@ -162,10 +187,33 @@ const MillionaireGame = () => {
     }
   };
 
+  // Lógica das Ajudas
+  const use5050 = () => {
+    if (used5050 || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    setUsed5050(true);
+    const incorrect = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct);
+    const toHide = incorrect.sort(() => Math.random() - 0.5).slice(0, 2);
+    setHiddenOptions(toHide);
+    showSuccess("50/50 Ativado!");
+  };
+
+  const useDoubleChance = () => {
+    if (usedDouble || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    setUsedDouble(true);
+    setDoubleChanceActive(true);
+    showSuccess("Dupla Chance Ativada! Você pode errar uma vez.");
+  };
+
+  const useTip = () => {
+    if (usedTip || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    setUsedTip(true);
+    setShowTip(true);
+    showSuccess("Dica revelada!");
+  };
+
   const startGame = async () => {
     if (room.host_id !== currentUserId) return;
 
-    // Sorteia 5 fáceis, 5 médias e 5 difíceis
     const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5).slice(0, 5);
     const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5).slice(0, 5);
     const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5).slice(0, 5);
@@ -207,6 +255,10 @@ const MillionaireGame = () => {
         setRoom(payload.new);
         if (payload.new.phase === 'question') {
           setSelectedChoice(null);
+          setHiddenOptions([]);
+          setShowTip(false);
+          setDoubleChanceActive(false);
+          setFirstWrongDone(false);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -323,10 +375,46 @@ const MillionaireGame = () => {
           </Card>
         ) : room.phase === 'question' ? (
           <div className="space-y-8">
-            {myPlayer.is_eliminated && (
-              <div className="bg-red-600/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3 text-red-500 animate-in slide-in-from-top duration-500">
-                <AlertCircle className="w-5 h-5" />
-                <p className="text-xs font-black uppercase tracking-widest">Você está no modo espectador. Acompanhe a rodada abaixo.</p>
+            {/* Barra de Ajudas */}
+            {!myPlayer.is_eliminated && (
+              <div className="flex justify-center gap-4">
+                <Button 
+                  onClick={use5050} 
+                  disabled={used5050 || !!myAnswer}
+                  className={cn(
+                    "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
+                    used5050 ? "bg-slate-800 text-slate-600 border-white/5" : "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/20"
+                  )}
+                >
+                  <Split className="w-5 h-5" /> 50/50
+                </Button>
+                <Button 
+                  onClick={useDoubleChance} 
+                  disabled={usedDouble || !!myAnswer}
+                  className={cn(
+                    "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
+                    usedDouble ? "bg-slate-800 text-slate-600 border-white/5" : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
+                  )}
+                >
+                  <Repeat className="w-5 h-5" /> DUPLA CHANCE
+                </Button>
+                <Button 
+                  onClick={useTip} 
+                  disabled={usedTip || !!myAnswer}
+                  className={cn(
+                    "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
+                    usedTip ? "bg-slate-800 text-slate-600 border-white/5" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20"
+                  )}
+                >
+                  <Lightbulb className="w-5 h-5" /> DICA
+                </Button>
+              </div>
+            )}
+
+            {showTip && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-center gap-3 text-emerald-400 animate-in slide-in-from-top duration-500">
+                <Lightbulb className="w-5 h-5 shrink-0" />
+                <p className="text-sm font-bold italic">"{currentQuestion.tip}"</p>
               </div>
             )}
 
@@ -345,12 +433,13 @@ const MillionaireGame = () => {
               {Object.entries(currentQuestion.options).map(([key, val]) => (
                 <Button
                   key={key}
-                  disabled={myPlayer.is_eliminated || !!myAnswer || submitting}
-                  onClick={() => setSelectedChoice(key)}
+                  disabled={myPlayer.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)}
+                  onClick={() => handleChoiceClick(key)}
                   className={cn(
                     "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
                     myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white shadow-lg" :
                     selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
+                    hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" :
                     "bg-white/5 border-white/10 text-white hover:bg-white/10",
                     myPlayer.is_eliminated && "cursor-default opacity-60"
                   )}
@@ -425,13 +514,6 @@ const MillionaireGame = () => {
                 </div>
               </Card>
             </div>
-
-            {myPlayer.is_eliminated && myPlayer.last_answered_index === room.current_question_index && (
-              <div className="bg-red-600 p-8 rounded-[2rem] text-center animate-bounce shadow-2xl shadow-red-900/40">
-                <h2 className="text-3xl font-black text-white tracking-tighter">VOCÊ FOI ELIMINADO!</h2>
-                <p className="text-white/80 font-bold">Agora você é um espectador.</p>
-              </div>
-            )}
           </div>
         ) : room.phase === 'finished' ? (
           <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl">

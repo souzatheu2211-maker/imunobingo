@@ -19,6 +19,7 @@ import BattleArena from "./pages/BattleArena";
 import Diagnosis from "./pages/Diagnosis";
 import MillionaireLobby from "./pages/MillionaireLobby";
 import MillionaireGame from "./pages/MillionaireGame";
+import MillionairePresentation from "./pages/MillionairePresentation";
 import NotFound from "./pages/NotFound";
 import Credits from "./components/Credits";
 import { Home as HomeIcon, Gamepad2, BookOpen, User, ShieldCheck, LogOut, Sparkles, LayoutGrid, ShieldAlert, Microscope } from "lucide-react";
@@ -194,6 +195,7 @@ const App = () => {
             
             <Route path="/millionaire" element={session ? <Layout isAdmin={isAdmin}><MillionaireLobby /></Layout> : <Navigate to="/login" />} />
             <Route path="/millionaire/:id" element={session ? <Layout isAdmin={isAdmin}><MillionaireGame /></Layout> : <Navigate to="/login" />} />
+            <Route path="/millionaire/:id/presentation" element={session ? <MillionairePresentation /> : <Navigate to="/login" />} />
             
             <Route path="/diagnosis" element={session ? <Layout isAdmin={isAdmin}><Diagnosis /></Layout> : <Navigate to="/login" />} />
             

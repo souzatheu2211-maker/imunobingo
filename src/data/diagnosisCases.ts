@@ -1,13 +1,13 @@
 export interface DiagnosisCase {
   id: string;
   title: string;
-  description: string;
-  symptoms: string[];
-  questions: {
+  initialPresentation: string;
+  clues: string[];
+  finalQuestion: {
     question: string;
     options: string[];
     answer: number;
-  }[];
+  };
   explanation: string;
   category: string;
 }
@@ -15,177 +15,92 @@ export interface DiagnosisCase {
 export const DIAGNOSIS_CASES: DiagnosisCase[] = [
   {
     id: "1",
-    title: "O Choque do Amendoim",
-    description: "Paciente de 8 anos apresenta urticária generalizada, edema de glote e queda de pressão arterial 10 minutos após ingerir um doce em uma festa.",
-    symptoms: ["Dispneia", "Hipotensão", "Edema facial", "Urticária"],
-    category: "Hipersensibilidade Tipo I",
-    questions: [
-      {
-        question: "Qual a classe de anticorpo responsável por iniciar esta reação imediata?",
-        options: ["IgG", "IgM", "IgA", "IgE"],
-        answer: 3
-      },
-      {
-        question: "A qual célula o anticorpo mencionado se liga através de receptores de alta afinidade (FcεRI)?",
-        options: ["Neutrófilo", "Mastócito", "Linfócito T", "Macrófago"],
-        answer: 1
-      },
-      {
-        question: "Qual o principal mediador pré-formado liberado que causa a vasodilatação e o edema?",
-        options: ["Citocina", "Histamina", "Interferon", "Sistema Complemento"],
-        answer: 1
-      },
-      {
-        question: "A queda da pressão arterial indica que a reação tornou-se sistêmica. Como chamamos esse quadro?",
-        options: ["Imunodeficiência", "Autoimunidade", "Anafilaxia", "Opsonização"],
-        answer: 2
-      },
-      {
-        question: "Qual o tratamento de emergência padrão-ouro para reverter o choque e o edema de glote?",
-        options: ["Antibiótico", "Adrenalina (Epinefrina)", "Antiviral", "Vitamina C"],
-        answer: 1
-      }
+    title: "Emergência Pediátrica",
+    initialPresentation: "Paciente de 8 anos é trazido às pressas após ingerir um doce em uma festa de aniversário.",
+    clues: [
+      "Pista 1: O paciente apresenta urticária (placas vermelhas) generalizada e coceira intensa.",
+      "Pista 2: Há um inchaço visível nos lábios e pálpebras (angioedema).",
+      "Pista 3: O paciente começa a apresentar estridor inspiratório e dificuldade para falar.",
+      "Pista 4: A pressão arterial está em 80/40 mmHg (Hipotensão grave)."
     ],
-    explanation: "A anafilaxia é uma reação de hipersensibilidade tipo I. A IgE ligada a mastócitos reconhece o alérgeno, causando desgranulação massiva de histamina, resultando em colapso circulatório e obstrução das vias aéreas."
+    finalQuestion: {
+      question: "Com base nas evidências clínicas, qual o diagnóstico mais provável?",
+      options: ["Crise de Asma", "Choque Anafilático", "Intoxicação Alimentar", "Urticária Comum"],
+      answer: 1
+    },
+    category: "Hipersensibilidade Tipo I",
+    explanation: "Trata-se de anafilaxia, uma reação sistêmica grave mediada por IgE. A liberação massiva de histamina causa vasodilatação (choque) e edema de glote, exigindo adrenalina imediata."
   },
   {
     id: "2",
-    title: "A Borboleta no Rosto",
-    description: "Mulher de 25 anos com dor articular persistente, febre baixa e uma mancha avermelhada em formato de borboleta na face que piora com o sol.",
-    symptoms: ["Rash malar", "Artralgia", "Fotossensibilidade", "Fadiga"],
-    category: "Autoimunidade (Lúpus)",
-    questions: [
-      {
-        question: "O 'rash malar' (mancha em borboleta) é característico de qual patologia autoimune?",
-        options: ["Artrite Reumatoide", "Lúpus Eritematoso Sistêmico", "AIDS", "Psoríase"],
-        answer: 1
-      },
-      {
-        question: "Qual o mecanismo de dano tecidual predominante nesta doença?",
-        options: ["Ataque direto por células NK", "Deposição de Imunocomplexos (Tipo III)", "Ação de IgE em mastócitos", "Destruição por Neutrófilos"],
-        answer: 1
-      },
-      {
-        question: "Qual exame laboratorial é o 'padrão-ouro' para triagem inicial desta suspeita?",
-        options: ["Hemograma", "FAN (Anticorpos Antinucleares)", "Glicemia", "Ureia e Creatinina"],
-        answer: 1
-      },
-      {
-        question: "A deposição desses complexos nos rins pode causar qual complicação grave?",
-        options: ["Cálculo Renal", "Glomerulonefrite Lúpica", "Infecção Urinária", "Diabetes Insipidus"],
-        answer: 1
-      },
-      {
-        question: "Por que a exposição solar (UV) piora as lesões cutâneas?",
-        options: ["Causa queimadura simples", "Induz apoptose celular e exposição de antígenos nucleares", "O sol mata os anticorpos", "Aumenta a produção de vitamina D"],
-        answer: 1
-      }
+    title: "O Mistério das Articulações",
+    initialPresentation: "Mulher de 25 anos queixa-se de cansaço extremo e dores nas articulações das mãos há 3 meses.",
+    clues: [
+      "Pista 1: A paciente relata que as dores pioram ao acordar e melhoram durante o dia.",
+      "Pista 2: Surgiu uma mancha avermelhada nas bochechas e no dorso do nariz após exposição solar.",
+      "Pista 3: Exames laboratoriais mostram proteinúria (proteína na urina), indicando dano renal.",
+      "Pista 4: O teste de FAN (Fator Antinuclear) resultou em título alto (1:640)."
     ],
-    explanation: "O Lúpus (LES) é uma doença autoimune sistêmica onde anticorpos atacam o próprio núcleo das células. A formação de imunocomplexos (Antígeno-Anticorpo) circula e se deposita em vasos, pele e rins, ativando o complemento e causando inflamação crônica."
+    finalQuestion: {
+      question: "Qual patologia autoimune explica este quadro clínico?",
+      options: ["Artrite Reumatoide", "Lúpus Eritematoso Sistêmico", "Febre Reumática", "Dermatite de Contato"],
+      answer: 1
+    },
+    category: "Autoimunidade",
+    explanation: "O Lúpus (LES) é caracterizado pelo rash malar (borboleta), artralgia e presença de autoanticorpos (FAN). É uma hipersensibilidade do tipo III por deposição de imunocomplexos."
   },
   {
     id: "3",
-    title: "O Inimigo Invisível",
-    description: "Paciente apresenta infecções oportunistas recorrentes, como candidíase oral persistente e pneumonia por fungos. Relata perda de peso e suores noturnos.",
-    symptoms: ["Linfadenopatia", "Infecções fúngicas", "Perda de peso", "Leucopenia"],
-    category: "Imunodeficiência (HIV)",
-    questions: [
-      {
-        question: "Qual o principal alvo celular do vírus HIV no sistema imunológico?",
-        options: ["Linfócito B", "Linfócito T CD4+", "Linfócito T CD8+", "Célula NK"],
-        answer: 1
-      },
-      {
-        question: "O vírus utiliza qual receptor de superfície para entrar nesta célula?",
-        options: ["CD8", "CD4", "MHC II", "BCR"],
-        answer: 1
-      },
-      {
-        question: "A destruição dessas células causa a perda de qual função essencial?",
-        options: ["Fagocitose", "Coordenação da resposta imune adaptativa", "Produção de hemácias", "Coagulação sanguínea"],
-        answer: 1
-      },
-      {
-        question: "Como chamamos as infecções que aproveitam a baixa imunidade para atacar?",
-        options: ["Infecções Primárias", "Infecções Oportunistas", "Infecções Virais", "Infecções Bacterianas"],
-        answer: 1
-      },
-      {
-        question: "Qual o critério laboratorial para definir o estágio de AIDS?",
-        options: ["Presença de febre", "Contagem de CD4 abaixo de 200 células/mm³", "Presença de tosse", "Aumento de Neutrófilos"],
-        answer: 1
-      }
+    title: "Vulnerabilidade Imunológica",
+    initialPresentation: "Paciente de 32 anos procura o posto com tosse persistente e manchas brancas na boca.",
+    clues: [
+      "Pista 1: As manchas brancas são compatíveis com Candidíase Oral (sapinho).",
+      "Pista 2: O paciente relata perda de 10kg nos últimos 2 meses sem dieta.",
+      "Pista 3: O hemograma revela uma linfopenia (baixa contagem de linfócitos) acentuada.",
+      "Pista 4: A contagem de Linfócitos T CD4+ está em 150 células/mm³."
     ],
-    explanation: "O HIV causa uma imunodeficiência adquirida ao destruir os linfócitos T auxiliares (CD4+). Sem eles, o sistema imune não consegue ativar células B para produzir anticorpos nem células T citotóxicas, deixando o corpo vulnerável a patógenos que normalmente seriam eliminados."
+    finalQuestion: {
+      question: "Qual a condição clínica que define este estágio de imunodeficiência?",
+      options: ["Leucemia", "AIDS (SIDA)", "Linfoma de Hodgkin", "Tuberculose Isolada"],
+      answer: 1
+    },
+    category: "Imunodeficiência",
+    explanation: "A AIDS é o estágio avançado da infecção pelo HIV, definido pela queda de CD4 abaixo de 200/mm³ e presença de infecções oportunistas como a candidíase esofágica."
   },
   {
     id: "4",
-    title: "Rejeição Pós-Transplante",
-    description: "Paciente recebeu um transplante renal há 15 dias. Apresenta febre, diminuição do volume urinário e dor intensa sobre o local do enxerto.",
-    symptoms: ["Oligúria", "Febre", "Hipertensão", "Dor no enxerto"],
-    category: "Hipersensibilidade Tipo IV",
-    questions: [
-      {
-        question: "Qual o tipo de rejeição que ocorre nos primeiros dias/semanas após o transplante?",
-        options: ["Hiperaguda", "Aguda", "Crônica", "Inata"],
-        answer: 1
-      },
-      {
-        question: "Qual o principal mecanismo imunológico envolvido na rejeição aguda celular?",
-        options: ["Anticorpos pré-formados", "Linfócitos T citotóxicos (CD8+)", "Mastócitos", "Complemento"],
-        answer: 1
-      },
-      {
-        question: "O que as células T do receptor reconhecem como 'estranho' no órgão doado?",
-        options: ["Tipo sanguíneo", "Moléculas de MHC (HLA) do doador", "Glicose", "Proteínas do plasma"],
-        answer: 1
-      },
-      {
-        question: "Esta reação é classificada como qual tipo de hipersensibilidade?",
-        options: ["Tipo I", "Tipo II", "Tipo III", "Tipo IV (Tardia)"],
-        answer: 3
-      },
-      {
-        question: "Qual a principal estratégia para prevenir ou tratar essa rejeição?",
-        options: ["Antibióticos", "Imunossupressores (ex: Ciclosporina)", "Vitaminas", "Diuréticos"],
-        answer: 1
-      }
+    title: "Complicação Pós-Cirúrgica",
+    initialPresentation: "Paciente de 45 anos, transplantado renal há 12 dias, apresenta febre e mal-estar.",
+    clues: [
+      "Pista 1: O volume de urina (diurese) diminuiu drasticamente nas últimas 24 horas.",
+      "Pista 2: Há dor e sensibilidade ao palpar a região onde o rim foi implantado.",
+      "Pista 3: A biópsia do enxerto mostra infiltrado denso de Linfócitos T CD8+.",
+      "Pista 4: Os níveis de creatinina sérica subiram de 1.2 para 3.5 mg/dL."
     ],
-    explanation: "A rejeição aguda é mediada principalmente por células T que reconhecem o MHC do doador como não-próprio. Isso desencadeia uma resposta inflamatória citotóxica que ataca os vasos e tecidos do órgão transplantado."
+    finalQuestion: {
+      question: "Qual o processo imunológico em curso?",
+      options: ["Infecção Urinária", "Rejeição Aguda Celular", "Rejeição Hiperaguda", "Toxicidade por Medicamento"],
+      answer: 1
+    },
+    category: "Transplantes",
+    explanation: "A rejeição aguda ocorre dias ou semanas após o transplante e é mediada principalmente por células T que reconhecem o MHC (HLA) do doador como estranho."
   },
   {
     id: "5",
-    title: "Anemia Hemolítica do RN",
-    description: "Recém-nascido apresenta icterícia grave (pele amarelada) e anemia profunda logo após o nascimento. A mãe é Rh negativo e o bebê Rh positivo.",
-    symptoms: ["Icterícia", "Anemia", "Hepatoesplenomegalia", "Palidez"],
-    category: "Hipersensibilidade Tipo II",
-    questions: [
-      {
-        question: "Qual a classe de anticorpo materno que atravessa a placenta e ataca o feto?",
-        options: ["IgM", "IgG", "IgA", "IgE"],
-        answer: 1
-      },
-      {
-        question: "Por que a IgG ataca as hemácias do bebê?",
-        options: ["Reconhece o fator Rh como antígeno estranho", "O bebê não tem sangue", "A mãe tem infecção", "O sangue é incompatível com ABO"],
-        answer: 0
-      },
-      {
-        question: "Qual o mecanismo de destruição das hemácias opsonizadas?",
-        options: ["Fagocitose e Lise pelo Complemento", "Explosão celular", "Desidratação", "Falta de ferro"],
-        answer: 0
-      },
-      {
-        question: "Esta reação é classificada como qual tipo de hipersensibilidade?",
-        options: ["Tipo I", "Tipo II (Citotóxica)", "Tipo III", "Tipo IV"],
-        answer: 1
-      },
-      {
-        question: "Qual medicamento a mãe deve receber em gestações futuras para prevenir isso?",
-        options: ["Ferro", "Imunoglobulina Anti-Rh (RhoGAM)", "Corticoides", "Insulina"],
-        answer: 1
-      }
+    title: "Icterícia Neonatal",
+    initialPresentation: "Recém-nascido de 24 horas de vida apresenta pele e olhos amarelados (icterícia) intensa.",
+    clues: [
+      "Pista 1: A mãe possui tipo sanguíneo O e fator Rh Negativo.",
+      "Pista 2: O bebê possui tipo sanguíneo A e fator Rh Positivo.",
+      "Pista 3: O teste de Coombs Direto no sangue do bebê foi Positivo.",
+      "Pista 4: O hemograma do RN mostra muitos eritroblastos (hemácias jovens) e anemia."
     ],
-    explanation: "A Eritroblastose Fetal ocorre quando anticorpos IgG da mãe Rh- atacam as hemácias Rh+ do feto. É uma hipersensibilidade tipo II, onde o anticorpo se liga diretamente à célula-alvo, levando à sua destruição pelo sistema complemento ou macrófagos."
+    finalQuestion: {
+      question: "Qual o diagnóstico desta patologia hemolítica?",
+      options: ["Icterícia Fisiológica", "Eritroblastose Fetal", "Anemia Falciforme", "Sepse Neonatal"],
+      answer: 1
+    },
+    category: "Hipersensibilidade Tipo II",
+    explanation: "A Eritroblastose Fetal ocorre quando anticorpos IgG anti-Rh da mãe atravessam a placenta e destroem as hemácias do feto Rh+. É uma hipersensibilidade citotóxica tipo II."
   }
 ];

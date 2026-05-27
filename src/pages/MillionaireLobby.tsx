@@ -35,12 +35,13 @@ const MillionaireLobby = () => {
 
       if (roomError) throw roomError;
 
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
 
       await supabase.from('millionaire_players').insert({
         room_id: room.id,
         user_id: user.id,
         name: profile?.full_name || 'Candidato',
+        avatar_url: profile?.avatar_url,
         current_value: 0,
         is_eliminated: false
       });
@@ -70,7 +71,7 @@ const MillionaireLobby = () => {
 
       if (roomError || !room) throw new Error("Sala não encontrada.");
 
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
 
       const { data: existing } = await supabase
         .from('millionaire_players')
@@ -84,6 +85,7 @@ const MillionaireLobby = () => {
           room_id: room.id,
           user_id: user.id,
           name: profile?.full_name || 'Candidato',
+          avatar_url: profile?.avatar_url,
           current_value: 0,
           is_eliminated: false
         });

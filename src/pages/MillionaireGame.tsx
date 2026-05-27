@@ -7,6 +7,7 @@ import { MILLIONAIRE_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Trophy, 
   Timer, 
@@ -36,13 +37,14 @@ import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
 import { cn } from '@/lib/utils';
 
+// Expandido para 18 níveis (15 originais + 3 bônus)
 const PRIZES = [
-  1000, 2000, 3000, 5000, 10000, 
-  20000, 30000, 50000, 100000, 200000, 
-  300000, 500000, 700000, 900000, 1000000
+  1000, 2000, 2500, 3000, 5000, 10000, 
+  50000, 60000, 70000, 80000, 100000, 
+  110000, 200000, 300000, 500000, 700000, 900000, 1000000
 ];
 
-const CHECKPOINTS = [4, 9]; // Índices das perguntas 5 e 10
+const CHECKPOINTS = [5, 10]; // Índices das perguntas 6 e 11 (ajustado para 18)
 
 const MillionaireGame = () => {
   const { id: roomId } = useParams();
@@ -126,7 +128,7 @@ const MillionaireGame = () => {
         if (currentQuestion.isAntibody) {
           newValue += 40000;
         } else if (currentQuestion.isGreed) {
-          // Se acertou a pergunta da ganância (respondeu NÃO), não ganha nada extra, apenas continua
+          // Continua com o valor atual
         } else {
           newValue = PRIZES[room.current_question_index];
         }
@@ -137,14 +139,11 @@ const MillionaireGame = () => {
           newValue = Math.max(0, player.current_value - 3000);
         } else if (currentQuestion.isAntibody) {
           newValue = Math.max(0, player.current_value - 10000);
-        } else if (currentQuestion.isGreed) {
-          // Se errou a ganância (respondeu SIM), será tratado na seleção de alvo
-          // Mas por padrão, se não escolheu ninguém e o tempo acabou, apenas continua
         } else {
-          // Lógica de Penalidade por Faixa
-          if (room.current_question_index < 5) {
+          // Lógica de Penalidade por Faixa (Baseada em 18 perguntas)
+          if (room.current_question_index < 6) {
             newValue = Math.max(0, player.current_value - 2000);
-          } else if (room.current_question_index < 10) {
+          } else if (room.current_question_index < 12) {
             newValue = Math.max(0, player.current_value - 10000);
           } else {
             newValue = Math.max(0, player.current_value - 20000);
@@ -195,12 +194,6 @@ const MillionaireGame = () => {
   const handleChoiceClick = (key: string) => {
     if (myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)) return;
 
-    // Bloqueio de ajudas em perguntas especiais
-    if (currentQuestion.difficulty === 'special' && (used5050 || usedDouble || usedTip)) {
-      // Ajudas já foram usadas, mas o botão estaria desabilitado. 
-      // Aqui apenas garantimos que não pode usar novas.
-    }
-
     if (doubleChanceActive && key !== currentQuestion.correct && !firstWrongDone) {
       setFirstWrongDone(true);
       setHiddenOptions(prev => [...prev, key]);
@@ -210,7 +203,6 @@ const MillionaireGame = () => {
 
     setSelectedChoice(key);
 
-    // Lógica da Ganância
     if (currentQuestion.isGreed && key === 'A') {
       const isLeader = [...players].sort((a, b) => b.current_value - a.current_value)[0].id === myPlayer.id;
       if (isLeader) {
@@ -228,7 +220,6 @@ const MillionaireGame = () => {
     const target = players.find(p => p.id === targetId);
     if (!target) return;
 
-    // A PEGADINHA: O ganancioso é eliminado e seus pontos vão para o alvo
     await supabase.from('millionaire_players').update({
       is_eliminated: true,
       current_value: 0
@@ -241,7 +232,6 @@ const MillionaireGame = () => {
     showError("NÃO SEJA GANANCIOSO, UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS.");
     setShowGreedSelection(false);
     
-    // Envia resposta errada para o sistema registrar a eliminação
     await supabase.from('millionaire_answers').insert({
       room_id: roomId,
       player_id: myPlayer.id,
@@ -325,20 +315,20 @@ const MillionaireGame = () => {
     const antibodyBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'antibody_bonus')!;
     const greedTrap = MILLIONAIRE_QUESTIONS.find(q => q.id === 'greed_trap')!;
 
-    // Construção da sequência com bônus
+    // Sequência de 18 perguntas (15 originais + 3 bônus)
     const questionIds = [
       easy[0].id, 
       easy[1].id, 
-      profBonus.id, // Após a 2ª
+      profBonus.id, // Bônus 1 (Após a 2)
       easy[2].id, 
       easy[3].id, 
       easy[4].id, 
-      antibodyBonus.id, // Entre 5 e 6
+      antibodyBonus.id, // Bônus 2 (Entre 5 e 6)
       medium[0].id, 
       medium[1].id, 
       medium[2].id, 
       medium[3].id, 
-      greedTrap.id, // Entre 9 e 10
+      greedTrap.id, // Bônus 3 (Entre 9 e 10)
       medium[4].id, 
       hard[0].id, 
       hard[1].id, 
@@ -456,8 +446,11 @@ const MillionaireGame = () => {
                 "flex items-center justify-between p-2 rounded-xl transition-colors",
                 p.is_eliminated ? "bg-red-500/5" : "bg-white/5"
               )}>
-                <div className="flex items-center gap-2">
-                  <div className={cn("w-2 h-2 rounded-full", p.is_eliminated ? "bg-red-500" : "bg-emerald-500 animate-pulse")} />
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-8 h-8 border border-white/10">
+                    <AvatarImage src={p.avatar_url} className="object-cover" />
+                    <AvatarFallback className="bg-slate-800 text-[10px] font-black">{p.name[0]}</AvatarFallback>
+                  </Avatar>
                   <div className="flex flex-col">
                     <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
                     {p.is_eliminated && <span className="text-[8px] text-red-500 font-black uppercase">Finalizado</span>}
@@ -590,7 +583,11 @@ const MillionaireGame = () => {
                     onClick={() => handleGreedElimination(p.id)}
                     className="h-20 rounded-3xl font-black text-xl bg-red-600 hover:bg-red-500 text-white border-2 border-red-400 shadow-lg"
                   >
-                    <Skull className="mr-3 w-6 h-6" /> ELIMINAR {p.name.toUpperCase()}
+                    <Avatar className="w-10 h-10 mr-3 border border-white/20">
+                      <AvatarImage src={p.avatar_url} className="object-cover" />
+                      <AvatarFallback className="bg-slate-800 text-xs">{p.name[0]}</AvatarFallback>
+                    </Avatar>
+                    ELIMINAR {p.name.toUpperCase()}
                   </Button>
                 ))}
                 {players.filter(p => p.id !== myPlayer.id && !p.is_eliminated).length === 0 && (
@@ -656,8 +653,14 @@ const MillionaireGame = () => {
                 </h3>
                 <div className="space-y-2">
                   {players.filter(p => p.last_answered_index === room.current_question_index && !p.is_eliminated).map(p => (
-                    <div key={p.id} className="text-white font-bold flex justify-between">
-                      <span>{p.name}</span>
+                    <div key={p.id} className="text-white font-bold flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6">
+                          <AvatarImage src={p.avatar_url} className="object-cover" />
+                          <AvatarFallback className="text-[8px]">{p.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <span>{p.name}</span>
+                      </div>
                       <span className="text-emerald-400">R$ {p.current_value.toLocaleString()}</span>
                     </div>
                   ))}
@@ -673,8 +676,14 @@ const MillionaireGame = () => {
                 </h3>
                 <div className="space-y-2">
                   {players.filter(p => p.is_eliminated && p.last_answered_index === room.current_question_index).map(p => (
-                    <div key={p.id} className="text-slate-400 font-bold flex justify-between">
-                      <span>{p.name}</span>
+                    <div key={p.id} className="text-slate-400 font-bold flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6 grayscale">
+                          <AvatarImage src={p.avatar_url} className="object-cover" />
+                          <AvatarFallback className="text-[8px]">{p.name[0]}</AvatarFallback>
+                        </Avatar>
+                        <span>{p.name}</span>
+                      </div>
                       <span className="text-red-500">FINALIZADO</span>
                     </div>
                   ))}
@@ -695,7 +704,14 @@ const MillionaireGame = () => {
                   "flex items-center justify-between p-6 rounded-3xl border",
                   i === 0 ? "bg-yellow-600/20 border-yellow-500" : "bg-white/5 border-white/10"
                 )}>
-                  <span className="font-black text-white text-xl">{i + 1}º {p.name}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="font-black text-white text-xl">{i + 1}º</span>
+                    <Avatar className="w-10 h-10 border border-white/10">
+                      <AvatarImage src={p.avatar_url} className="object-cover" />
+                      <AvatarFallback className="font-black">{p.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-black text-white text-xl">{p.name}</span>
+                  </div>
                   <span className="text-yellow-500 font-black text-xl">R$ {p.current_value.toLocaleString()}</span>
                 </div>
               ))}

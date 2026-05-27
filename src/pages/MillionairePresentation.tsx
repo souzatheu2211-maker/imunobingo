@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS } from '@/data/millionaireQuestions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Timer, Users, Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -59,7 +60,6 @@ const MillionairePresentation = () => {
     </div>
   );
 
-  // Busca a pergunta baseada no ID salvo na sala
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
 
@@ -157,6 +157,10 @@ const MillionairePresentation = () => {
                 )}>
                   <div className="flex items-center gap-4">
                     <span className={cn("text-2xl font-black w-8", i === 0 ? "text-yellow-500" : "text-slate-600")}>{i + 1}º</span>
+                    <Avatar className="w-12 h-12 border border-white/10">
+                      <AvatarImage src={p.avatar_url} className="object-cover" />
+                      <AvatarFallback className="font-black">{p.name[0]}</AvatarFallback>
+                    </Avatar>
                     <div className="flex flex-col">
                       <span className="text-2xl font-black text-white tracking-tight">{p.name}</span>
                       <span className={cn("text-[10px] font-black uppercase", p.is_eliminated ? "text-red-500" : "text-emerald-500")}>

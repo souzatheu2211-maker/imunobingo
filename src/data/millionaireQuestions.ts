@@ -1,64 +1,14 @@
 export interface MillionaireQuestion {
   id: string;
-  difficulty: "easy" | "medium" | "hard" | "special";
+  difficulty: "easy" | "medium" | "hard";
   question: string;
   options: { A: string; B: string; C: string; D: string };
   correct: "A" | "B" | "C" | "D";
   explanation: string;
   tip: string;
-  isProfessor?: boolean;
-  isAntibody?: boolean;
-  isGreed?: boolean;
 }
 
 export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
-  // PERGUNTAS ESPECIAIS
-  {
-    id: "prof_bonus",
-    difficulty: "special",
-    isProfessor: true,
-    question: "Qual o nome completo do professor da disciplina?",
-    options: { 
-      A: "Dr. Genivaldo Santos Cruz", 
-      B: "Genivaldo Santos Cruz", 
-      C: "Genivaldo Cruz Santos", 
-      D: "Dr Genivaldo Cruz Santos" 
-    },
-    correct: "C",
-    explanation: "Não tem nem explicação alguém errar essa aqui.",
-    tip: "Preste atenção na ordem dos sobrenomes."
-  },
-  {
-    id: "antibody_bonus",
-    difficulty: "special",
-    isAntibody: true,
-    question: "Qual célula é responsável pela produção de anticorpos?",
-    options: { 
-      A: "Neutrófilo", 
-      B: "Macrófago", 
-      C: "Linfócito B", 
-      D: "Hemácia" 
-    },
-    correct: "C",
-    explanation: "Os linfócitos B participam da resposta imune específica (humoral). Quando ativados, eles se diferenciam em plasmócitos, células responsáveis pela produção de anticorpos.",
-    tip: "Pense na imunidade humoral."
-  },
-  {
-    id: "greed_trap",
-    difficulty: "special",
-    isGreed: true,
-    question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela para subir ainda mais. Deseja eliminar alguém?",
-    options: { 
-      A: "SIM", 
-      B: "NÃO", 
-      C: "TALVEZ", 
-      D: "NUNCA" 
-    },
-    correct: "B", // A resposta "segura" é não, mas a lógica será tratada no componente
-    explanation: "NÃO SEJA GANANCIOSO, UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS.",
-    tip: "Pense no trabalho em equipe do sistema imune."
-  },
-
   // EASY (1-22)
   {
     id: "e1",

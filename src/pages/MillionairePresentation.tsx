@@ -49,11 +49,10 @@ const MillionairePresentation = () => {
 
   if (!room) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Sparkles className="animate-spin" /></div>;
 
-  // Lógica para determinar a questão atual (considerando a fase de revelação)
   const getActiveQuestion = () => {
-    const isProfessor = room.phase === 'special_professor' || (room.phase === 'reveal' && room.current_question_index === 1);
-    const isSurprise = room.phase === 'special_surprise' || (room.phase === 'reveal' && room.current_question_index === 4);
-    const isMalice = room.phase === 'special_malice' || (room.phase === 'reveal' && room.current_question_index === 8);
+    const isProfessor = room.phase === 'special_professor' || room.phase === 'reveal_special_professor';
+    const isSurprise = room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise';
+    const isMalice = room.phase === 'special_malice' || room.phase === 'reveal_special_malice';
 
     if (isProfessor) return SPECIAL_QUESTIONS.professor;
     if (isSurprise) return SPECIAL_QUESTIONS.surprise;
@@ -68,9 +67,9 @@ const MillionairePresentation = () => {
   return (
     <div className={cn(
       "min-h-screen p-12 flex flex-col gap-12 transition-colors duration-1000",
-      room.phase === 'special_professor' ? "bg-red-950" :
-      room.phase === 'special_surprise' ? "bg-blue-950" :
-      room.phase === 'special_malice' ? "bg-purple-950" :
+      room.phase === 'special_professor' || room.phase === 'reveal_special_professor' ? "bg-red-950" :
+      room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise' ? "bg-blue-950" :
+      room.phase === 'special_malice' || room.phase === 'reveal_special_malice' ? "bg-purple-950" :
       "bg-slate-950"
     )}>
       <div className="flex justify-between items-center">
@@ -79,7 +78,7 @@ const MillionairePresentation = () => {
           <Badge className="bg-yellow-600/20 text-yellow-500 border-yellow-500/30 px-4 py-1 text-sm font-black">MODO PROJETOR</Badge>
         </div>
         
-        {room.phase !== 'waiting' && room.phase !== 'finished' && (
+        {room.phase !== 'waiting' && room.phase !== 'finished' && !room.phase.startsWith('reveal') && (
           <div className={cn(
             "p-8 rounded-[2.5rem] border-4 flex items-center gap-6",
             timeLeft <= 5 ? "bg-red-600/20 border-red-500 animate-pulse" : "bg-orange-600/10 border-orange-500/30"
@@ -92,25 +91,24 @@ const MillionairePresentation = () => {
 
       <div className="grid grid-cols-12 gap-12 flex-1">
         <div className="col-span-8 flex flex-col gap-8">
-          {room.phase?.includes('question') || room.phase?.startsWith('special_') || room.phase === 'reveal' ? (
+          {room.phase === 'question' || room.phase.startsWith('special_') || room.phase.startsWith('reveal') ? (
             <div className="space-y-8 animate-in zoom-in duration-700">
               <Card className={cn(
                 "rounded-[4rem] p-16 shadow-2xl relative overflow-hidden border-none",
-                room.phase?.startsWith('special_') ? "bg-white/10 text-white" : "bg-white text-slate-950"
+                room.phase?.startsWith('special_') || room.phase?.startsWith('reveal_special') ? "bg-white/10 text-white" : "bg-white text-slate-950"
               )}>
-                {room.phase === 'special_professor' && <Skull className="w-20 h-20 text-red-500 absolute -top-4 -left-4 rotate-12 opacity-20" />}
                 <h2 className="text-5xl md:text-6xl font-black text-center leading-tight tracking-tight">
                   {currentQuestion.question}
                 </h2>
               </Card>
 
-              {room.phase !== 'special_malice' && (
+              {room.phase !== 'special_malice' && room.phase !== 'reveal_special_malice' && (
                 <div className="grid grid-cols-2 gap-6">
                   {Object.entries(currentQuestion.options || {}).map(([key, val]) => val && (
                     <div key={key} className={cn(
                       "p-8 rounded-[2.5rem] border-4 text-3xl font-black flex items-center gap-6 transition-all duration-500",
-                      room.phase === 'reveal' && key === currentQuestion.correct ? "bg-emerald-500 border-emerald-400 text-white scale-105 shadow-2xl" :
-                      room.phase === 'reveal' ? "opacity-20 bg-white/5 border-white/10 text-white" :
+                      room.phase.startsWith('reveal') && key === currentQuestion.correct ? "bg-emerald-500 border-emerald-400 text-white scale-105 shadow-2xl" :
+                      room.phase.startsWith('reveal') ? "opacity-20 bg-white/5 border-white/10 text-white" :
                       "bg-white/5 border-white/10 text-white"
                     )}>
                       <span className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-xl">{key}</span>

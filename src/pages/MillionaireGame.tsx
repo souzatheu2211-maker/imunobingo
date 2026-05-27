@@ -53,7 +53,6 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
-  // Estados das Ajudas
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
   const [usedTip, setUsedTip] = useState(false);
@@ -67,13 +66,12 @@ const MillionaireGame = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
   
-  // Lógica para determinar a questão atual (considerando a fase de revelação)
   const getActiveQuestion = () => {
     if (!room) return MILLIONAIRE_QUESTIONS[0];
 
-    const isProfessor = room.phase === 'special_professor' || (room.phase === 'reveal' && room.current_question_index === 1);
-    const isSurprise = room.phase === 'special_surprise' || (room.phase === 'reveal' && room.current_question_index === 4);
-    const isMalice = room.phase === 'special_malice' || (room.phase === 'reveal' && room.current_question_index === 8);
+    const isProfessor = room.phase === 'special_professor' || room.phase === 'reveal_special_professor';
+    const isSurprise = room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise';
+    const isMalice = room.phase === 'special_malice' || room.phase === 'reveal_special_malice';
 
     if (isProfessor) return SPECIAL_QUESTIONS.professor;
     if (isSurprise) return SPECIAL_QUESTIONS.surprise;
@@ -104,7 +102,7 @@ const MillionaireGame = () => {
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
 
-        if (remaining === 0 && room.host_id === currentUserId && room.phase !== 'reveal') {
+        if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal')) {
           handleRevealPhase();
         }
       };
@@ -121,14 +119,16 @@ const MillionaireGame = () => {
   const handleRevealPhase = async () => {
     if (room.host_id !== currentUserId) return;
 
+    const currentPhase = room.phase;
+    const isSpecial = currentPhase.startsWith('special_');
+
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
       .eq('room_id', roomId)
       .eq('question_index', room.current_question_index)
-      .eq('phase', room.phase);
+      .eq('phase', currentPhase);
 
-    // Processar cada jogador
     for (const player of players) {
       if (player.is_eliminated) continue;
 
@@ -138,16 +138,16 @@ const MillionaireGame = () => {
       let newValue = player.current_value;
       let eliminated = false;
 
-      if (room.phase === 'special_professor') {
+      if (currentPhase === 'special_professor') {
         if (isCorrect) newValue += 10000;
         else {
           newValue = Math.max(0, newValue - 3000);
           eliminated = true;
         }
-      } else if (room.phase === 'special_surprise') {
+      } else if (currentPhase === 'special_surprise') {
         if (isCorrect) newValue += 40000;
         else newValue = Math.max(0, newValue - 10000);
-      } else if (room.phase === 'question') {
+      } else if (currentPhase === 'question') {
         if (isCorrect) {
           newValue += PRIZES[room.current_question_index];
         } else {
@@ -169,8 +169,7 @@ const MillionaireGame = () => {
       }).eq('id', player.id);
     }
 
-    // Lógica extra da Surpresa (eliminar o último)
-    if (room.phase === 'special_surprise') {
+    if (currentPhase === 'special_surprise') {
       const { data: currentPlayers } = await supabase
         .from('millionaire_players')
         .select('*')
@@ -183,7 +182,9 @@ const MillionaireGame = () => {
       }
     }
 
-    await supabase.from('millionaire_rooms').update({ phase: 'reveal' }).eq('id', roomId);
+    await supabase.from('millionaire_rooms').update({ 
+      phase: isSpecial ? `reveal_${currentPhase}` : 'reveal' 
+    }).eq('id', roomId);
 
     setTimeout(async () => {
       const { data: activePlayers } = await supabase
@@ -200,11 +201,11 @@ const MillionaireGame = () => {
       let nextPhase = 'question';
       let nextIndex = room.current_question_index;
 
-      if (room.phase === 'special_professor') {
+      if (currentPhase === 'special_professor') {
         nextIndex = 2;
-      } else if (room.phase === 'special_surprise') {
+      } else if (currentPhase === 'special_surprise') {
         nextIndex = 5;
-      } else if (room.phase === 'special_malice') {
+      } else if (currentPhase === 'special_malice') {
         nextIndex = 9;
       } else {
         if (room.current_question_index === 1) {
@@ -230,12 +231,8 @@ const MillionaireGame = () => {
     }, 5000);
   };
 
-  // Lógica das Ajudas (Limitadas a uma por rodada)
   const use5050 = () => {
-    if (helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer) {
-      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
-      return;
-    }
+    if (helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer) return;
     const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct && currentQuestion.options[key as keyof typeof currentQuestion.options]);
     const toHide = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
     setHiddenOptions(toHide);
@@ -245,10 +242,7 @@ const MillionaireGame = () => {
   };
 
   const useDoubleChance = () => {
-    if (helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer) {
-      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
-      return;
-    }
+    if (helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer) return;
     setDoubleChanceActive(true);
     setUsedDouble(true);
     setHelpUsedThisRound(true);
@@ -256,10 +250,7 @@ const MillionaireGame = () => {
   };
 
   const useTipHelp = () => {
-    if (helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer) {
-      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
-      return;
-    }
+    if (helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer) return;
     setShowTip(true);
     setUsedTip(true);
     setHelpUsedThisRound(true);
@@ -364,7 +355,7 @@ const MillionaireGame = () => {
     const channel = supabase.channel(`millionaire_game_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
-        if (payload.new.phase?.includes('question') || payload.new.phase?.startsWith('special_')) {
+        if (payload.new.phase === 'question' || payload.new.phase.startsWith('special_')) {
           setSelectedChoice(null); 
           setHiddenOptions([]); 
           setShowTip(false); 
@@ -391,7 +382,6 @@ const MillionaireGame = () => {
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
       
-      {/* Ranking Lateral */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
@@ -422,7 +412,6 @@ const MillionaireGame = () => {
           </div>
         </Card>
 
-        {/* Painel de Ajudas */}
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5">
             <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Ajudas Disponíveis</h3>
@@ -465,11 +454,6 @@ const MillionaireGame = () => {
               <span className="text-[8px] font-black">DICA</span>
             </Button>
           </div>
-          {helpUsedThisRound && (
-            <div className="px-4 pb-4 text-center">
-              <p className="text-[8px] text-yellow-500 font-black uppercase">Apenas uma ajuda por rodada!</p>
-            </div>
-          )}
         </Card>
 
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
@@ -490,7 +474,6 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
-      {/* Área de Jogo */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -540,7 +523,7 @@ const MillionaireGame = () => {
             </div>
             <Button variant="ghost" onClick={() => setSelectedChoice(null)} className="w-full text-slate-500">VOLTAR</Button>
           </div>
-        ) : (room.phase?.includes('question') || room.phase?.startsWith('special_')) && room.phase !== 'reveal' ? (
+        ) : (room.phase === 'question' || room.phase.startsWith('special_')) ? (
           <div className="space-y-8">
             <Card className={cn(
               "rounded-[3rem] p-12 shadow-2xl relative overflow-hidden transition-all duration-1000",
@@ -549,9 +532,6 @@ const MillionaireGame = () => {
               room.phase === 'special_malice' ? "bg-purple-950/90 border-purple-500/50" :
               "bg-white/90 border-white/20"
             )}>
-              {room.phase === 'special_professor' && <div className="absolute top-4 left-1/2 -translate-x-1/2 text-red-500 font-black text-[10px] uppercase tracking-[0.5em] animate-pulse">PERGUNTA PEGADINHA - ELIMINAÇÃO IMEDIATA</div>}
-              {room.phase === 'special_surprise' && <div className="absolute top-4 left-1/2 -translate-x-1/2 text-blue-400 font-black text-[10px] uppercase tracking-[0.5em] animate-pulse">RODADA BÔNUS - ÚLTIMO LUGAR SERÁ ELIMINADO</div>}
-              
               <div className="absolute top-8 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full border border-orange-500/30">
                 <Timer className="w-4 h-4 text-orange-600" />
                 <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
@@ -599,7 +579,7 @@ const MillionaireGame = () => {
               </div>
             )}
           </div>
-        ) : room.phase === 'reveal' ? (
+        ) : room.phase.startsWith('reveal') ? (
           <div className="space-y-8 animate-in zoom-in duration-500">
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center">
               <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>

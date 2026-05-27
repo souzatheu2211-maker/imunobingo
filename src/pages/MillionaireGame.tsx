@@ -47,6 +47,7 @@ const MillionaireGame = () => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Encontra o jogador atual na lista de jogadores
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
@@ -179,7 +180,7 @@ const MillionaireGame = () => {
     }
 
     if (!myPlayer) {
-      showError("Erro: Jogador não identificado. Tente recarregar a página.");
+      showError("Aguarde o sistema identificar seu perfil...");
       return;
     }
 
@@ -197,7 +198,6 @@ const MillionaireGame = () => {
       
       if (error) throw error;
 
-      // Atualiza localmente para feedback imediato
       setAnswers(prev => [...prev, {
         player_id: myPlayer.id,
         question_index: room.current_question_index,
@@ -254,8 +254,25 @@ const MillionaireGame = () => {
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
       
+      // Busca jogadores e garante que o usuário atual esteja na lista
       const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
-      setPlayers(playersData || []);
+      const currentPlayers = playersData || [];
+      setPlayers(currentPlayers);
+
+      const isMeInRoom = currentPlayers.some(p => p.user_id === user.id);
+      if (!isMeInRoom) {
+        const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
+        const { data: newPlayer } = await supabase.from('millionaire_players').insert({
+          room_id: roomId,
+          user_id: user.id,
+          name: profile?.full_name || 'Candidato',
+          avatar_url: profile?.avatar_url,
+          current_value: 0,
+          is_eliminated: false
+        }).select().single();
+        
+        if (newPlayer) setPlayers(prev => [...prev, newPlayer]);
+      }
       
       const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
       setAnswers(answersData || []);
@@ -267,8 +284,14 @@ const MillionaireGame = () => {
     const channel = supabase.channel(`millionaire_realtime_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
-        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        if (payload.eventType === 'INSERT') {
+          setPlayers(prev => {
+            if (prev.some(p => p.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => setAnswers(prev => [...prev, payload.new]))
       .subscribe();

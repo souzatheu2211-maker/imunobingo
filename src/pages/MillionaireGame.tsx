@@ -30,6 +30,7 @@ const MillionaireGame = () => {
   const navigate = useNavigate();
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
+  const [myPlayer, setMyPlayer] = useState<any>(null);
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(20);
@@ -47,8 +48,6 @@ const MillionaireGame = () => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Encontra o jogador atual na lista de jogadores
-  const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
   
@@ -180,7 +179,7 @@ const MillionaireGame = () => {
     }
 
     if (!myPlayer) {
-      showError("Aguarde o sistema identificar seu perfil...");
+      showError("Erro crítico: Perfil não sincronizado. Recarregue a página.");
       return;
     }
 
@@ -207,7 +206,7 @@ const MillionaireGame = () => {
 
       showSuccess("Resposta confirmada!");
     } catch (error: any) { 
-      showError("Erro ao enviar: " + (error.message || "Falha na conexão")); 
+      showError("Falha ao registrar resposta."); 
     } finally { 
       setSubmitting(false); 
     }
@@ -254,15 +253,17 @@ const MillionaireGame = () => {
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
       
-      // Busca jogadores e garante que o usuário atual esteja na lista
+      // Busca jogadores
       const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
       const currentPlayers = playersData || [];
       setPlayers(currentPlayers);
 
-      const isMeInRoom = currentPlayers.some(p => p.user_id === user.id);
-      if (!isMeInRoom) {
+      // Identifica ou cria o jogador atual
+      let currentPlayer = currentPlayers.find(p => p.user_id === user.id);
+      
+      if (!currentPlayer) {
         const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
-        const { data: newPlayer } = await supabase.from('millionaire_players').insert({
+        const { data: newPlayer, error: insertError } = await supabase.from('millionaire_players').insert({
           room_id: roomId,
           user_id: user.id,
           name: profile?.full_name || 'Candidato',
@@ -271,8 +272,13 @@ const MillionaireGame = () => {
           is_eliminated: false
         }).select().single();
         
-        if (newPlayer) setPlayers(prev => [...prev, newPlayer]);
+        if (newPlayer) {
+          currentPlayer = newPlayer;
+          setPlayers(prev => [...prev, newPlayer]);
+        }
       }
+      
+      setMyPlayer(currentPlayer);
       
       const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
       setAnswers(answersData || []);
@@ -291,19 +297,26 @@ const MillionaireGame = () => {
           });
         } else if (payload.eventType === 'UPDATE') {
           setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+          if (payload.new.user_id === currentUserId) setMyPlayer(payload.new);
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => setAnswers(prev => [...prev, payload.new]))
       .subscribe();
       
     return () => { supabase.removeChannel(channel); };
-  }, [roomId, navigate]);
+  }, [roomId, navigate, currentUserId]);
 
-  if (loading || !room) {
+  if (loading || !room || !myPlayer) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-        <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
-        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-6">
+        <div className="relative">
+          <div className="absolute -inset-4 bg-yellow-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+          <Loader2 className="w-16 h-16 text-yellow-500 animate-spin relative" />
+        </div>
+        <div className="text-center space-y-2">
+          <p className="font-black uppercase tracking-[0.3em] text-xs text-yellow-500 animate-pulse">Sincronizando Biometria...</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Aguardando autorização do laboratório</p>
+        </div>
       </div>
     );
   }
@@ -318,7 +331,7 @@ const MillionaireGame = () => {
             <Users className="w-3 h-3 text-blue-400" />
           </div>
           <div className="p-4 space-y-3">
-            {players.length > 0 ? players.sort((a, b) => b.current_value - a.current_value).map(p => (
+            {players.sort((a, b) => b.current_value - a.current_value).map(p => (
               <div key={p.id} className={cn("flex items-center justify-between p-2 rounded-xl transition-colors", p.is_eliminated ? "bg-red-500/5" : "bg-white/5")}>
                 <div className="flex items-center gap-3">
                   <Avatar className="w-8 h-8 border border-white/10">
@@ -332,7 +345,7 @@ const MillionaireGame = () => {
                 </div>
                 <span className="text-[10px] font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</span>
               </div>
-            )) : <p className="text-slate-600 text-[10px] text-center py-4">Nenhum jogador na sala</p>}
+            ))}
           </div>
         </Card>
 

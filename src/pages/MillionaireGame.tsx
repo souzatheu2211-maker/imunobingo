@@ -29,7 +29,8 @@ import {
   Repeat,
   ShieldCheck,
   HandMetal,
-  Coins
+  Coins,
+  Skull
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -55,6 +56,7 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  // Ajudas
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
   const [usedTip, setUsedTip] = useState(false);
@@ -62,6 +64,9 @@ const MillionaireGame = () => {
   const [showTip, setShowTip] = useState(false);
   const [doubleChanceActive, setDoubleChanceActive] = useState(false);
   const [firstWrongDone, setFirstWrongDone] = useState(false);
+
+  // Ganância
+  const [showGreedSelection, setShowGreedSelection] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
@@ -105,6 +110,9 @@ const MillionaireGame = () => {
       .eq('room_id', roomId)
       .eq('question_index', room.current_question_index);
 
+    const sortedPlayers = [...players].sort((a, b) => b.current_value - a.current_value);
+    const lastPlayer = sortedPlayers.filter(p => !p.is_eliminated).pop();
+
     for (const player of players) {
       if (player.is_eliminated) continue;
 
@@ -112,14 +120,42 @@ const MillionaireGame = () => {
       const isCorrect = playerAns?.is_correct || false;
       
       let newValue = player.current_value;
-      let eliminated = !isCorrect;
+      let eliminated = false;
 
       if (isCorrect) {
-        newValue = PRIZES[room.current_question_index];
+        if (currentQuestion.isAntibody) {
+          newValue += 40000;
+        } else if (currentQuestion.isGreed) {
+          // Se acertou a pergunta da ganância (respondeu NÃO), não ganha nada extra, apenas continua
+        } else {
+          newValue = PRIZES[room.current_question_index];
+        }
       } else {
-        if (room.current_question_index > 9) newValue = PRIZES[9];
-        else if (room.current_question_index > 4) newValue = PRIZES[4];
-        else newValue = 0;
+        // Lógica de Penalidade Especial
+        if (currentQuestion.isProfessor) {
+          eliminated = true;
+          newValue = Math.max(0, player.current_value - 3000);
+        } else if (currentQuestion.isAntibody) {
+          newValue = Math.max(0, player.current_value - 10000);
+        } else if (currentQuestion.isGreed) {
+          // Se errou a ganância (respondeu SIM), será tratado na seleção de alvo
+          // Mas por padrão, se não escolheu ninguém e o tempo acabou, apenas continua
+        } else {
+          // Lógica de Penalidade por Faixa
+          if (room.current_question_index < 5) {
+            newValue = Math.max(0, player.current_value - 2000);
+          } else if (room.current_question_index < 10) {
+            newValue = Math.max(0, player.current_value - 10000);
+          } else {
+            newValue = Math.max(0, player.current_value - 20000);
+            eliminated = true;
+          }
+        }
+      }
+
+      // Eliminação do último após a pergunta de anticorpos
+      if (currentQuestion.isAntibody && player.id === lastPlayer?.id) {
+        eliminated = true;
       }
 
       await supabase.from('millionaire_players').update({
@@ -140,7 +176,7 @@ const MillionaireGame = () => {
 
       const nextIndex = room.current_question_index + 1;
       
-      if (!activePlayers || activePlayers.length === 0 || nextIndex >= PRIZES.length) {
+      if (!activePlayers || activePlayers.length === 0 || nextIndex >= room.question_ids.length) {
         await supabase.from('millionaire_rooms').update({ 
           phase: 'finished', 
           status: 'finished' 
@@ -159,6 +195,12 @@ const MillionaireGame = () => {
   const handleChoiceClick = (key: string) => {
     if (myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)) return;
 
+    // Bloqueio de ajudas em perguntas especiais
+    if (currentQuestion.difficulty === 'special' && (used5050 || usedDouble || usedTip)) {
+      // Ajudas já foram usadas, mas o botão estaria desabilitado. 
+      // Aqui apenas garantimos que não pode usar novas.
+    }
+
     if (doubleChanceActive && key !== currentQuestion.correct && !firstWrongDone) {
       setFirstWrongDone(true);
       setHiddenOptions(prev => [...prev, key]);
@@ -167,6 +209,46 @@ const MillionaireGame = () => {
     }
 
     setSelectedChoice(key);
+
+    // Lógica da Ganância
+    if (currentQuestion.isGreed && key === 'A') {
+      const isLeader = [...players].sort((a, b) => b.current_value - a.current_value)[0].id === myPlayer.id;
+      if (isLeader) {
+        setShowGreedSelection(true);
+      } else {
+        showError("Apenas o líder pode ser ganancioso!");
+        setSelectedChoice(null);
+      }
+    }
+  };
+
+  const handleGreedElimination = async (targetId: string) => {
+    if (!myPlayer) return;
+    
+    const target = players.find(p => p.id === targetId);
+    if (!target) return;
+
+    // A PEGADINHA: O ganancioso é eliminado e seus pontos vão para o alvo
+    await supabase.from('millionaire_players').update({
+      is_eliminated: true,
+      current_value: 0
+    }).eq('id', myPlayer.id);
+
+    await supabase.from('millionaire_players').update({
+      current_value: target.current_value + myPlayer.current_value
+    }).eq('id', targetId);
+
+    showError("NÃO SEJA GANANCIOSO, UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS.");
+    setShowGreedSelection(false);
+    
+    // Envia resposta errada para o sistema registrar a eliminação
+    await supabase.from('millionaire_answers').insert({
+      room_id: roomId,
+      player_id: myPlayer.id,
+      question_index: room.current_question_index,
+      answer: 'A',
+      is_correct: false
+    });
   };
 
   const submitAnswer = async () => {
@@ -210,7 +292,7 @@ const MillionaireGame = () => {
   };
 
   const use5050 = () => {
-    if (used5050 || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    if (used5050 || myPlayer?.is_eliminated || room?.phase !== 'question' || currentQuestion.difficulty === 'special') return;
     setUsed5050(true);
     const incorrect = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct);
     const toHide = incorrect.sort(() => Math.random() - 0.5).slice(0, 2);
@@ -219,14 +301,14 @@ const MillionaireGame = () => {
   };
 
   const useDoubleChance = () => {
-    if (usedDouble || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    if (usedDouble || myPlayer?.is_eliminated || room?.phase !== 'question' || currentQuestion.difficulty === 'special') return;
     setUsedDouble(true);
     setDoubleChanceActive(true);
     showSuccess("Dupla Chance Ativada! Você pode errar uma vez.");
   };
 
   const useTip = () => {
-    if (usedTip || myPlayer?.is_eliminated || room?.phase !== 'question') return;
+    if (usedTip || myPlayer?.is_eliminated || room?.phase !== 'question' || currentQuestion.difficulty === 'special') return;
     setUsedTip(true);
     setShowTip(true);
     showSuccess("Dica revelada!");
@@ -239,7 +321,31 @@ const MillionaireGame = () => {
     const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5).slice(0, 5);
     const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5).slice(0, 5);
     
-    const questionIds = [...easy, ...medium, ...hard].map(q => q.id);
+    const profBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'prof_bonus')!;
+    const antibodyBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'antibody_bonus')!;
+    const greedTrap = MILLIONAIRE_QUESTIONS.find(q => q.id === 'greed_trap')!;
+
+    // Construção da sequência com bônus
+    const questionIds = [
+      easy[0].id, 
+      easy[1].id, 
+      profBonus.id, // Após a 2ª
+      easy[2].id, 
+      easy[3].id, 
+      easy[4].id, 
+      antibodyBonus.id, // Entre 5 e 6
+      medium[0].id, 
+      medium[1].id, 
+      medium[2].id, 
+      medium[3].id, 
+      greedTrap.id, // Entre 9 e 10
+      medium[4].id, 
+      hard[0].id, 
+      hard[1].id, 
+      hard[2].id, 
+      hard[3].id, 
+      hard[4].id
+    ];
 
     await supabase.from('millionaire_rooms').update({
       status: 'playing',
@@ -280,6 +386,7 @@ const MillionaireGame = () => {
           setShowTip(false);
           setDoubleChanceActive(false);
           setFirstWrongDone(false);
+          setShowGreedSelection(false);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -303,7 +410,7 @@ const MillionaireGame = () => {
     );
   }
 
-  const canStop = myPlayer.current_value >= 20000 && !myPlayer.is_eliminated && room.phase === 'question' && !myAnswer;
+  const canStop = myPlayer.current_value >= 20000 && !myPlayer.is_eliminated && room.phase === 'question' && !myAnswer && !currentQuestion.isProfessor;
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
@@ -410,30 +517,30 @@ const MillionaireGame = () => {
               <div className="flex flex-wrap justify-center gap-4">
                 <Button 
                   onClick={use5050} 
-                  disabled={used5050 || !!myAnswer}
+                  disabled={used5050 || !!myAnswer || currentQuestion.difficulty === 'special'}
                   className={cn(
                     "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
-                    used5050 ? "bg-slate-800 text-slate-600 border-white/5" : "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/20"
+                    used5050 || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600 border-white/5" : "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/20"
                   )}
                 >
                   <Split className="w-5 h-5" /> 50/50
                 </Button>
                 <Button 
                   onClick={useDoubleChance} 
-                  disabled={usedDouble || !!myAnswer}
+                  disabled={usedDouble || !!myAnswer || currentQuestion.difficulty === 'special'}
                   className={cn(
                     "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
-                    usedDouble ? "bg-slate-800 text-slate-600 border-white/5" : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
+                    usedDouble || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600 border-white/5" : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
                   )}
                 >
                   <Repeat className="w-5 h-5" /> DUPLA CHANCE
                 </Button>
                 <Button 
                   onClick={useTip} 
-                  disabled={usedTip || !!myAnswer}
+                  disabled={usedTip || !!myAnswer || currentQuestion.difficulty === 'special'}
                   className={cn(
                     "h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all",
-                    usedTip ? "bg-slate-800 text-slate-600 border-white/5" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20"
+                    usedTip || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600 border-white/5" : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20"
                   )}
                 >
                   <Lightbulb className="w-5 h-5" /> DICA
@@ -447,6 +554,13 @@ const MillionaireGame = () => {
                     <HandMetal className="mr-2 w-5 h-5" /> PARAR E LEVAR R$ {myPlayer.current_value.toLocaleString()}
                   </Button>
                 )}
+              </div>
+            )}
+
+            {currentQuestion.isAntibody && (
+              <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl flex items-center gap-3 text-blue-400 animate-pulse">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p className="text-sm font-black uppercase tracking-widest">AVISO: O ÚLTIMO DO RANKING SERÁ ELIMINADO APÓS ESTA PERGUNTA!</p>
               </div>
             )}
 
@@ -468,28 +582,45 @@ const MillionaireGame = () => {
               </h2>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(currentQuestion.options).map(([key, val]) => (
-                <Button
-                  key={key}
-                  disabled={myPlayer.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)}
-                  onClick={() => handleChoiceClick(key)}
-                  className={cn(
-                    "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
-                    myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white shadow-lg" :
-                    selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
-                    hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" :
-                    "bg-white/5 border-white/10 text-white hover:bg-white/10",
-                    myPlayer.is_eliminated && "cursor-default opacity-60"
-                  )}
-                >
-                  <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>
-                  {val}
-                </Button>
-              ))}
-            </div>
+            {showGreedSelection ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in zoom-in duration-500">
+                {players.filter(p => p.id !== myPlayer.id && !p.is_eliminated).map(p => (
+                  <Button
+                    key={p.id}
+                    onClick={() => handleGreedElimination(p.id)}
+                    className="h-20 rounded-3xl font-black text-xl bg-red-600 hover:bg-red-500 text-white border-2 border-red-400 shadow-lg"
+                  >
+                    <Skull className="mr-3 w-6 h-6" /> ELIMINAR {p.name.toUpperCase()}
+                  </Button>
+                ))}
+                {players.filter(p => p.id !== myPlayer.id && !p.is_eliminated).length === 0 && (
+                  <p className="col-span-full text-center text-slate-500 font-black">Ninguém para eliminar.</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(currentQuestion.options).map(([key, val]) => (
+                  <Button
+                    key={key}
+                    disabled={myPlayer.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)}
+                    onClick={() => handleChoiceClick(key)}
+                    className={cn(
+                      "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
+                      myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white shadow-lg" :
+                      selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
+                      hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" :
+                      "bg-white/5 border-white/10 text-white hover:bg-white/10",
+                      myPlayer.is_eliminated && "cursor-default opacity-60"
+                    )}
+                  >
+                    <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>
+                    {val}
+                  </Button>
+                ))}
+              </div>
+            )}
 
-            {!myAnswer && !myPlayer.is_eliminated && (
+            {!myAnswer && !myPlayer.is_eliminated && !showGreedSelection && (
               <div className="flex justify-center">
                 <Button 
                   onClick={submitAnswer}
@@ -527,7 +658,7 @@ const MillionaireGame = () => {
                   {players.filter(p => p.last_answered_index === room.current_question_index && !p.is_eliminated).map(p => (
                     <div key={p.id} className="text-white font-bold flex justify-between">
                       <span>{p.name}</span>
-                      <span className="text-emerald-400">+ R$ {PRIZES[room.current_question_index].toLocaleString()}</span>
+                      <span className="text-emerald-400">R$ {p.current_value.toLocaleString()}</span>
                     </div>
                   ))}
                   {players.filter(p => p.last_answered_index === room.current_question_index && !p.is_eliminated).length === 0 && (

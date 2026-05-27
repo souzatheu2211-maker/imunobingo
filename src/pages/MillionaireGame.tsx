@@ -48,9 +48,7 @@ const MillionaireGame = () => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Encontra o jogador local de forma segura
   const myPlayer = players.find(p => p.user_id === currentUserId);
-  
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
@@ -63,7 +61,12 @@ const MillionaireGame = () => {
         const elapsed = Math.floor((now - startedAt) / 1000);
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
-        if (remaining === 0 && room.host_id === currentUserId) handleRevealPhase();
+        
+        // O Host aguarda o tempo acabar para revelar
+        if (remaining === 0 && room.host_id === currentUserId) {
+          // Pequeno delay de 2s para garantir que todas as respostas viajem pela rede
+          setTimeout(() => handleRevealPhase(), 2000);
+        }
       };
       updateTimer();
       timerRef.current = setInterval(updateTimer, 1000);
@@ -75,14 +78,24 @@ const MillionaireGame = () => {
 
   const handleRevealPhase = async () => {
     if (room.host_id !== currentUserId) return;
-    const { data: roundAnswers } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId).eq('question_index', room.current_question_index);
+    
+    // Busca as respostas mais recentes do banco
+    const { data: roundAnswers } = await supabase
+      .from('millionaire_answers')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('question_index', room.current_question_index);
+
     const sortedPlayers = [...players].sort((a, b) => b.current_value - a.current_value);
     const lastPlayer = sortedPlayers.filter(p => !p.is_eliminated).pop();
 
     for (const player of players) {
       if (player.is_eliminated) continue;
+      
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
-      const isCorrect = playerAns?.is_correct || false;
+      // Se não respondeu, is_correct é false
+      const isCorrect = playerAns ? playerAns.is_correct : false;
+      
       let newValue = player.current_value;
       let eliminated = false;
 
@@ -90,78 +103,138 @@ const MillionaireGame = () => {
         if (currentQuestion.isAntibody) newValue += 40000;
         else if (!currentQuestion.isGreed) newValue += PRIZES[room.current_question_index];
       } else {
-        if (currentQuestion.isProfessor) { eliminated = true; newValue = Math.max(0, player.current_value - 3000); }
-        else if (currentQuestion.isAntibody) newValue = Math.max(0, player.current_value - 10000);
-        else {
+        if (currentQuestion.isProfessor) { 
+          eliminated = true; 
+          newValue = Math.max(0, player.current_value - 3000); 
+        } else if (currentQuestion.isAntibody) {
+          newValue = Math.max(0, player.current_value - 10000);
+        } else {
           if (room.current_question_index < 6) newValue = Math.max(0, player.current_value - 2000);
           else if (room.current_question_index < 12) newValue = Math.max(0, player.current_value - 10000);
-          else { newValue = Math.max(0, player.current_value - 20000); eliminated = true; }
+          else { 
+            newValue = Math.max(0, player.current_value - 20000); 
+            eliminated = true; 
+          }
         }
       }
+      
+      // Regra especial da pergunta do Anticorpo: o último colocado é eliminado
       if (currentQuestion.isAntibody && player.id === lastPlayer?.id) eliminated = true;
 
-      await supabase.from('millionaire_players').update({ current_value: newValue, is_eliminated: eliminated, last_answered_index: room.current_question_index }).eq('id', player.id);
+      await supabase.from('millionaire_players')
+        .update({ 
+          current_value: newValue, 
+          is_eliminated: eliminated, 
+          last_answered_index: room.current_question_index 
+        })
+        .eq('id', player.id);
     }
 
     await supabase.from('millionaire_rooms').update({ phase: 'reveal' }).eq('id', roomId);
+    
     setTimeout(async () => {
-      const { data: activePlayers } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId).eq('is_eliminated', false);
+      const { data: activePlayers } = await supabase
+        .from('millionaire_players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('is_eliminated', false);
+        
       const nextIndex = room.current_question_index + 1;
+      
       if (!activePlayers || activePlayers.length === 0 || nextIndex >= room.question_ids.length) {
         await supabase.from('millionaire_rooms').update({ phase: 'finished', status: 'finished' }).eq('id', roomId);
         confetti();
       } else {
-        await supabase.from('millionaire_rooms').update({ current_question_index: nextIndex, phase: 'question', question_started_at: new Date().toISOString() }).eq('id', roomId);
+        await supabase.from('millionaire_rooms').update({ 
+          current_question_index: nextIndex, 
+          phase: 'question', 
+          question_started_at: new Date().toISOString() 
+        }).eq('id', roomId);
+        
+        // Reseta estados locais para a próxima pergunta
+        setSelectedChoice(null);
+        setHiddenOptions([]);
+        setShowTip(false);
+        setDoubleChanceActive(false);
+        setFirstWrongDone(false);
       }
     }, 5000);
   };
 
   const handleChoiceClick = (key: string) => {
     if (myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)) return;
+    
     if (doubleChanceActive && key !== currentQuestion.correct && !firstWrongDone) {
       setFirstWrongDone(true);
       setHiddenOptions(prev => [...prev, key]);
       showError("Primeira chance errada! Você ainda tem mais uma.");
       return;
     }
+    
     setSelectedChoice(key);
+    
     if (currentQuestion.isGreed && key === 'A') {
       const isLeader = [...players].sort((a, b) => b.current_value - a.current_value)[0]?.id === myPlayer?.id;
       if (isLeader) setShowGreedSelection(true);
-      else { showError("Apenas o líder pode ser ganancioso!"); setSelectedChoice(null); }
+      else { 
+        showError("Apenas o líder pode ser ganancioso!"); 
+        setSelectedChoice(null); 
+      }
     }
-  };
-
-  const handleGreedElimination = async (targetId: string) => {
-    if (!myPlayer) return;
-    const target = players.find(p => p.id === targetId);
-    if (!target) return;
-    await supabase.from('millionaire_players').update({ is_eliminated: true, current_value: 0 }).eq('id', myPlayer.id);
-    await supabase.from('millionaire_players').update({ current_value: target.current_value + myPlayer.current_value }).eq('id', targetId);
-    showError("NÃO SEJA GANANCIOSO!");
-    setShowGreedSelection(false);
-    await supabase.from('millionaire_answers').insert({ room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index, answer: 'A', is_correct: false });
   };
 
   const submitAnswer = async () => {
     if (!selectedChoice || !myPlayer || myPlayer.is_eliminated || room?.phase !== 'question' || myAnswer) return;
     setSubmitting(true);
     try {
-      await supabase.from('millionaire_answers').insert({ room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index, answer: selectedChoice, is_correct: selectedChoice === currentQuestion.correct });
+      const { error } = await supabase.from('millionaire_answers').insert({ 
+        room_id: roomId, 
+        player_id: myPlayer.id, 
+        question_index: room.current_question_index, 
+        answer: selectedChoice, 
+        is_correct: selectedChoice === currentQuestion.correct 
+      });
+      
+      if (error) throw error;
       showSuccess("Resposta enviada!");
-    } catch (error) { showError("Erro ao enviar."); } finally { setSubmitting(false); }
+    } catch (error) { 
+      showError("Erro ao enviar resposta."); 
+    } finally { 
+      setSubmitting(false); 
+    }
   };
 
   const startGame = async () => {
     if (room.host_id !== currentUserId) return;
-    const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5).slice(0, 5);
-    const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5).slice(0, 5);
-    const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5).slice(0, 5);
+    
+    // Sorteio seguindo a ordem exata solicitada
+    const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5);
+    const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5);
+    const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5);
+    
     const profBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'prof_bonus')!;
     const antibodyBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'antibody_bonus')!;
     const greedTrap = MILLIONAIRE_QUESTIONS.find(q => q.id === 'greed_trap')!;
-    const questionIds = [easy[0].id, easy[1].id, profBonus.id, easy[2].id, easy[3].id, easy[4].id, antibodyBonus.id, medium[0].id, medium[1].id, medium[2].id, medium[3].id, greedTrap.id, medium[4].id, hard[0].id, hard[1].id, hard[2].id, hard[3].id, hard[4].id];
-    await supabase.from('millionaire_rooms').update({ status: 'playing', phase: 'question', current_question_index: 0, question_ids: questionIds, question_started_at: new Date().toISOString() }).eq('id', roomId);
+
+    // Ordem: 2 fáceis, Prof (3ª), 3 fáceis, Anticorpo (7ª), 4 médias, Ganância (12ª), 1 média, 5 difíceis
+    const questionIds = [
+      easy[0].id, easy[1].id, // 1-2: Fácil
+      profBonus.id,           // 3: Professor
+      easy[2].id, easy[3].id, easy[4].id, // 4-6: Fácil
+      antibodyBonus.id,       // 7: Anticorpo
+      medium[0].id, medium[1].id, medium[2].id, medium[3].id, // 8-11: Médio
+      greedTrap.id,           // 12: Ganância
+      medium[4].id,           // 13: Médio
+      hard[0].id, hard[1].id, hard[2].id, hard[3].id, hard[4].id // 14-18: Difícil
+    ];
+
+    await supabase.from('millionaire_rooms').update({ 
+      status: 'playing', 
+      phase: 'question', 
+      current_question_index: 0, 
+      question_ids: questionIds, 
+      question_started_at: new Date().toISOString() 
+    }).eq('id', roomId);
   };
 
   useEffect(() => {
@@ -169,16 +242,21 @@ const MillionaireGame = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return navigate('/login');
       setCurrentUserId(user.id);
+      
       const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
+      
       const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
       setPlayers(playersData || []);
+      
       const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
       setAnswers(answersData || []);
+      
       setLoading(false);
     };
     setup();
+
     const channel = supabase.channel(`millionaire_realtime_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => setRoom(payload.new))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -187,6 +265,7 @@ const MillionaireGame = () => {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => setAnswers(prev => [...prev, payload.new]))
       .subscribe();
+      
     return () => { supabase.removeChannel(channel); };
   }, [roomId, navigate]);
 
@@ -262,7 +341,6 @@ const MillionaireGame = () => {
           </Card>
         ) : room.phase === 'question' ? (
           <div className="space-y-8">
-            {/* Container de Ajudas - Agora mais resiliente */}
             <div className="flex flex-wrap justify-center gap-4">
               <Button onClick={() => { setUsed5050(true); const incorrect = Object.keys(currentQuestion.options).filter(k => k !== currentQuestion.correct); setHiddenOptions(incorrect.sort(() => Math.random() - 0.5).slice(0, 2)); }} disabled={used5050 || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} className={cn("h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all", used5050 || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-violet-600 text-white shadow-lg")}><Split className="w-5 h-5" /> 50/50</Button>
               <Button onClick={() => { setUsedDouble(true); setDoubleChanceActive(true); }} disabled={usedDouble || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} className={cn("h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all", usedDouble || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg")}><Repeat className="w-5 h-5" /> DUPLA CHANCE</Button>

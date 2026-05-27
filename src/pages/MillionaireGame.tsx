@@ -44,7 +44,6 @@ const MillionaireGame = () => {
   const [showTip, setShowTip] = useState(false);
   const [doubleChanceActive, setDoubleChanceActive] = useState(false);
   const [firstWrongDone, setFirstWrongDone] = useState(false);
-  const [showGreedSelection, setShowGreedSelection] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -54,7 +53,7 @@ const MillionaireGame = () => {
   
   const myAnswer = answers.find(a => 
     a.player_id === myPlayer?.id && 
-    a.question_index === room?.current_question_index
+    Number(a.question_index) === Number(room?.current_question_index)
   );
 
   useEffect(() => {
@@ -68,7 +67,7 @@ const MillionaireGame = () => {
         setTimeLeft(remaining);
         
         if (remaining === 0 && room?.host_id === currentUserId) {
-          setTimeout(() => handleRevealPhase(), 1500);
+          setTimeout(() => handleRevealPhase(), 2000);
         }
       };
       updateTimer();
@@ -174,8 +173,13 @@ const MillionaireGame = () => {
   };
 
   const submitAnswer = async () => {
-    if (!selectedChoice || !myPlayer || myPlayer.is_eliminated) {
-      if (!selectedChoice) showError("Selecione uma opção primeiro!");
+    if (!selectedChoice) {
+      showError("Selecione uma opção primeiro!");
+      return;
+    }
+
+    if (!myPlayer) {
+      showError("Erro: Jogador não identificado. Tente recarregar a página.");
       return;
     }
 
@@ -193,6 +197,7 @@ const MillionaireGame = () => {
       
       if (error) throw error;
 
+      // Atualiza localmente para feedback imediato
       setAnswers(prev => [...prev, {
         player_id: myPlayer.id,
         question_index: room.current_question_index,
@@ -202,7 +207,7 @@ const MillionaireGame = () => {
 
       showSuccess("Resposta confirmada!");
     } catch (error: any) { 
-      showError("Erro ao enviar resposta."); 
+      showError("Erro ao enviar: " + (error.message || "Falha na conexão")); 
     } finally { 
       setSubmitting(false); 
     }

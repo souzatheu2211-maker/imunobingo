@@ -49,14 +49,21 @@ const MillionairePresentation = () => {
 
   if (!room) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Sparkles className="animate-spin" /></div>;
 
-  let currentQuestion: any;
-  if (room.phase === 'special_professor') currentQuestion = SPECIAL_QUESTIONS.professor;
-  else if (room.phase === 'special_surprise') currentQuestion = SPECIAL_QUESTIONS.surprise;
-  else if (room.phase === 'special_malice') currentQuestion = { question: "O quão ganancioso você é? Deseja eliminar alguém para roubar seus pontos?" };
-  else {
+  // Lógica para determinar a questão atual (considerando a fase de revelação)
+  const getActiveQuestion = () => {
+    const isProfessor = room.phase === 'special_professor' || (room.phase === 'reveal' && room.current_question_index === 1);
+    const isSurprise = room.phase === 'special_surprise' || (room.phase === 'reveal' && room.current_question_index === 4);
+    const isMalice = room.phase === 'special_malice' || (room.phase === 'reveal' && room.current_question_index === 8);
+
+    if (isProfessor) return SPECIAL_QUESTIONS.professor;
+    if (isSurprise) return SPECIAL_QUESTIONS.surprise;
+    if (isMalice) return { question: "O quão ganancioso você é? Deseja eliminar alguém para roubar seus pontos?" };
+
     const qId = room.question_ids?.[room.current_question_index];
-    currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === qId) || MILLIONAIRE_QUESTIONS[0];
-  }
+    return MILLIONAIRE_QUESTIONS.find(q => q.id === qId) || MILLIONAIRE_QUESTIONS[0];
+  };
+
+  const currentQuestion = getActiveQuestion();
 
   return (
     <div className={cn(

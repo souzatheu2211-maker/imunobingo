@@ -57,6 +57,8 @@ const MillionaireGame = () => {
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
   const [usedTip, setUsedTip] = useState(false);
+  const [helpUsedThisRound, setHelpUsedThisRound] = useState(false);
+  
   const [hiddenOptions, setHiddenOptions] = useState<string[]>([]);
   const [showTip, setShowTip] = useState(false);
   const [doubleChanceActive, setDoubleChanceActive] = useState(false);
@@ -65,15 +67,17 @@ const MillionaireGame = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
   
-  const isSpecialPhase = room?.phase?.startsWith('special_');
-  let currentQuestion: MillionaireQuestion;
+  // Lógica para determinar a questão atual (considerando a fase de revelação)
+  const getActiveQuestion = () => {
+    if (!room) return MILLIONAIRE_QUESTIONS[0];
 
-  if (room?.phase === 'special_professor') {
-    currentQuestion = SPECIAL_QUESTIONS.professor;
-  } else if (room?.phase === 'special_surprise') {
-    currentQuestion = SPECIAL_QUESTIONS.surprise;
-  } else if (room?.phase === 'special_malice') {
-    currentQuestion = {
+    const isProfessor = room.phase === 'special_professor' || (room.phase === 'reveal' && room.current_question_index === 1);
+    const isSurprise = room.phase === 'special_surprise' || (room.phase === 'reveal' && room.current_question_index === 4);
+    const isMalice = room.phase === 'special_malice' || (room.phase === 'reveal' && room.current_question_index === 8);
+
+    if (isProfessor) return SPECIAL_QUESTIONS.professor;
+    if (isSurprise) return SPECIAL_QUESTIONS.surprise;
+    if (isMalice) return {
       id: 'malice',
       difficulty: 'special',
       question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela pra subir ainda mais no jogo, deseja eliminar alguém?",
@@ -81,12 +85,14 @@ const MillionaireGame = () => {
       correct: "B",
       explanation: "NÃO SEJA GANANCIOSO. UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS.",
       tip: ""
-    };
-  } else {
-    const currentQuestionId = room?.question_ids?.[room?.current_question_index];
-    currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
-  }
-  
+    } as MillionaireQuestion;
+
+    const currentQuestionId = room.question_ids?.[room.current_question_index];
+    return MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
+  };
+
+  const currentQuestion = getActiveQuestion();
+  const isSpecialPhase = room?.phase?.startsWith('special_');
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index && a.phase === room?.phase);
 
   useEffect(() => {
@@ -122,6 +128,7 @@ const MillionaireGame = () => {
       .eq('question_index', room.current_question_index)
       .eq('phase', room.phase);
 
+    // Processar cada jogador
     for (const player of players) {
       if (player.is_eliminated) continue;
 
@@ -162,6 +169,7 @@ const MillionaireGame = () => {
       }).eq('id', player.id);
     }
 
+    // Lógica extra da Surpresa (eliminar o último)
     if (room.phase === 'special_surprise') {
       const { data: currentPlayers } = await supabase
         .from('millionaire_players')
@@ -192,13 +200,12 @@ const MillionaireGame = () => {
       let nextPhase = 'question';
       let nextIndex = room.current_question_index;
 
-      // Lógica de Sequência Estrita
       if (room.phase === 'special_professor') {
-        nextIndex = 2; // Vai para Q3
+        nextIndex = 2;
       } else if (room.phase === 'special_surprise') {
-        nextIndex = 5; // Vai para Q6
+        nextIndex = 5;
       } else if (room.phase === 'special_malice') {
-        nextIndex = 9; // Vai para Q10
+        nextIndex = 9;
       } else {
         if (room.current_question_index === 1) {
           nextPhase = 'special_professor';
@@ -223,27 +230,39 @@ const MillionaireGame = () => {
     }, 5000);
   };
 
-  // Lógica das Ajudas
+  // Lógica das Ajudas (Limitadas a uma por rodada)
   const use5050 = () => {
-    if (used5050 || isSpecialPhase || !!myAnswer) return;
+    if (helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer) {
+      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
+      return;
+    }
     const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct && currentQuestion.options[key as keyof typeof currentQuestion.options]);
     const toHide = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
     setHiddenOptions(toHide);
     setUsed5050(true);
+    setHelpUsedThisRound(true);
     showSuccess("50/50 Ativado!");
   };
 
   const useDoubleChance = () => {
-    if (usedDouble || isSpecialPhase || !!myAnswer) return;
+    if (helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer) {
+      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
+      return;
+    }
     setDoubleChanceActive(true);
     setUsedDouble(true);
+    setHelpUsedThisRound(true);
     showSuccess("Dupla Chance Ativada!");
   };
 
   const useTipHelp = () => {
-    if (usedTip || isSpecialPhase || !!myAnswer) return;
+    if (helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer) {
+      if (helpUsedThisRound) showError("Você já usou uma ajuda nesta rodada!");
+      return;
+    }
     setShowTip(true);
     setUsedTip(true);
+    setHelpUsedThisRound(true);
     showSuccess("Dica Revelada!");
   };
 
@@ -300,8 +319,8 @@ const MillionaireGame = () => {
     if (!confirmed) return;
 
     try {
-      await supabase.from('millionaire_players').update({ is_eliminated: true, current_value: 0 }).eq('id', myPlayer.id);
-      await supabase.from('millionaire_players').update({ current_value: target.current_value + myPlayer.current_value }).eq('id', target.id);
+      await supabase.from('millionaire_players').update({ is_eliminated: true, current_value: 0 }).eq('id', target.id);
+      await supabase.from('millionaire_players').update({ current_value: target.current_value + myPlayer.current_value }).eq('id', myPlayer.id);
       
       await supabase.from('millionaire_answers').insert({
         room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
@@ -346,7 +365,12 @@ const MillionaireGame = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
         if (payload.new.phase?.includes('question') || payload.new.phase?.startsWith('special_')) {
-          setSelectedChoice(null); setHiddenOptions([]); setShowTip(false); setDoubleChanceActive(false); setFirstWrongDone(false);
+          setSelectedChoice(null); 
+          setHiddenOptions([]); 
+          setShowTip(false); 
+          setDoubleChanceActive(false); 
+          setFirstWrongDone(false);
+          setHelpUsedThisRound(false);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -407,7 +431,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={use5050}
-              disabled={used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 used5050 ? "opacity-30 grayscale" : "hover:bg-emerald-500/10 hover:border-emerald-500/30"
@@ -419,7 +443,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={useDoubleChance}
-              disabled={usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 usedDouble ? "opacity-30 grayscale" : "hover:bg-blue-500/10 hover:border-blue-500/30"
@@ -431,7 +455,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={useTipHelp}
-              disabled={usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 usedTip ? "opacity-30 grayscale" : "hover:bg-yellow-500/10 hover:border-yellow-500/30"
@@ -441,6 +465,11 @@ const MillionaireGame = () => {
               <span className="text-[8px] font-black">DICA</span>
             </Button>
           </div>
+          {helpUsedThisRound && (
+            <div className="px-4 pb-4 text-center">
+              <p className="text-[8px] text-yellow-500 font-black uppercase">Apenas uma ajuda por rodada!</p>
+            </div>
+          )}
         </Card>
 
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">

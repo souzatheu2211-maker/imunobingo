@@ -24,7 +24,7 @@ export const SPECIAL_QUESTIONS: Record<string, MillionaireQuestion> = {
       D: "Dr Genivaldo Cruz Santos" 
     },
     correct: "C",
-    explanation: "Não tem nem explicação alguém errar essa aqui.",
+    explanation: "O nome correto é Genivaldo Cruz Santos.",
     tip: "Preste atenção na ordem dos sobrenomes!"
   },
   surprise: {
@@ -40,303 +40,145 @@ export const SPECIAL_QUESTIONS: Record<string, MillionaireQuestion> = {
       D: "Hemácia" 
     },
     correct: "C",
-    explanation: "Os linfócitos B participam da resposta imune específica (humoral). Quando ativados, eles se diferenciam em plasmócitos, células responsáveis pela produção de anticorpos que combatem antígenos específicos.",
+    explanation: "Os linfócitos B participam da resposta imune específica (humoral). Quando ativados, eles se diferenciam em plasmócitos, células responsáveis pela produção de anticorpos.",
     tip: "Pense na imunidade humoral."
   }
 };
 
 export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
-  // EASY (1-22)
   {
-    id: "e1",
+    id: "q1",
     difficulty: "easy",
-    question: "Qual característica é típica da imunidade inata?",
-    options: { A: "Alta especificidade", B: "Memória duradoura", C: "Não requer contato prévio", D: "Depende de linfócitos T" },
+    question: "Qual célula realiza fagocitose e participa da defesa inespecífica?",
+    options: { A: "Plaqueta", B: "Hemácia", C: "Neutrófilo", D: "Melanócito" },
     correct: "C",
-    explanation: "A imunidade inata é imediata e não depende de exposição prévia.",
-    tip: "Pense na primeira linha de defesa que já nasce com você."
+    explanation: "Neutrófilos são os fagócitos mais abundantes e a primeira linha de defesa celular inespecífica.",
+    tip: "É a célula mais numerosa do sangue periférico."
   },
   {
-    id: "e2",
+    id: "q2",
     difficulty: "easy",
-    question: "Qual característica é típica da imunidade adaptativa?",
-    options: { A: "Não gera memória", B: "Altamente específica", C: "Não depende de antígenos", D: "Atua somente por fagócitos" },
+    question: "Qual imunoglobulina é mais abundante no sangue?",
+    options: { A: "IgE", B: "IgG", C: "IgM", D: "IgA" },
     correct: "B",
-    explanation: "A adaptativa é específica e produz memória imunológica.",
-    tip: "É a resposta que 'aprende' com o invasor."
+    explanation: "A IgG representa cerca de 75-80% das imunoglobulinas séricas totais.",
+    tip: "É a única que atravessa a placenta."
   },
   {
-    id: "e3",
+    id: "q3",
     difficulty: "easy",
-    question: "Qual das opções é um exemplo de mediador celular da imunidade inata?",
-    options: { A: "Linfócito T CD8", B: "Neutrófilo", C: "Anticorpo IgG", D: "Plasmócito" },
-    correct: "B",
-    explanation: "Neutrófilos são fagócitos típicos da imunidade inata.",
-    tip: "É a célula mais numerosa que chega primeiro na infecção."
-  },
-  {
-    id: "e4",
-    difficulty: "easy",
-    question: "Qual das opções é um componente humoral importante da imunidade inata?",
-    options: { A: "Anticorpos", B: "Sistema complemento", C: "TCR", D: "BCR" },
-    correct: "B",
-    explanation: "O complemento é um sistema plasmático da imunidade inata.",
-    tip: "Uma cascata de proteínas que 'complementa' a ação das células."
-  },
-  {
-    id: "e5",
-    difficulty: "easy",
-    question: "Qual célula é considerada um fagócito profissional?",
-    options: { A: "Linfócito B", B: "Neutrófilo", C: "Hemácia", D: "Plaqueta" },
-    correct: "B",
-    explanation: "Neutrófilos realizam fagocitose e destruição microbiana.",
-    tip: "Eles literalmente 'comem' os patógenos."
-  },
-  {
-    id: "e6",
-    difficulty: "easy",
-    question: "Qual é o principal objetivo do sistema imune?",
-    options: { A: "Produzir energia", B: "Reconhecer o não-próprio", C: "Regular o coração", D: "Produzir glicose" },
-    correct: "B",
-    explanation: "O SI reconhece e elimina componentes não próprios.",
-    tip: "Distinguir o 'eu' do 'outro'."
-  },
-  {
-    id: "e7",
-    difficulty: "easy",
-    question: "Qual órgão linfóide é considerado primário?",
-    options: { A: "Linfonodo", B: "Baço", C: "Timo", D: "Tonsila" },
+    question: "Qual célula produz anticorpos?",
+    options: { A: "Basófilo", B: "Macrófago", C: "Linfócito B", D: "Neutrófilo" },
     correct: "C",
-    explanation: "O timo é órgão linfóide primário onde T amadurecem.",
-    tip: "Localizado no tórax, regride com a idade."
+    explanation: "Linfócitos B se diferenciam em plasmócitos para secretar anticorpos.",
+    tip: "Pense na letra B de 'Bursa' ou 'Bone Marrow'."
   },
   {
-    id: "e8",
+    id: "q4",
     difficulty: "easy",
-    question: "Qual órgão linfóide secundário filtra a linfa?",
-    options: { A: "Linfonodo", B: "Medula óssea", C: "Timo", D: "Baço" },
-    correct: "A",
-    explanation: "Linfonodos filtram linfa e iniciam respostas adaptativas.",
-    tip: "Estão espalhados pelo corpo em cadeias."
+    question: "O MHC possui qual função principal?",
+    options: { A: "Produzir anticorpos", B: "Fazer coagulação sanguínea", C: "Produzir histamina", D: "Apresentar antígenos às células T" },
+    correct: "D",
+    explanation: "O Complexo Principal de Histocompatibilidade (MHC) exibe peptídeos para reconhecimento pelos receptores de células T (TCR).",
+    tip: "Funciona como uma 'bandeja' para mostrar o invasor."
   },
   {
-    id: "e9",
+    id: "q5",
     difficulty: "easy",
-    question: "Qual célula está mais associada à produção de anticorpos?",
-    options: { A: "Linfócito B", B: "Neutrófilo", C: "NK", D: "Mastócito" },
-    correct: "A",
-    explanation: "Linfócitos B diferenciam-se em plasmócitos produtores de anticorpos.",
-    tip: "B de 'Bone Marrow' ou 'Bursa'."
-  },
-  {
-    id: "e10",
-    difficulty: "easy",
-    question: "Qual célula atua contra células infectadas e tumorais sem MHC I?",
-    options: { A: "NK", B: "Hemácia", C: "Basófilo", D: "Plaqueta" },
-    correct: "A",
-    explanation: "Células NK atuam contra células infectadas/tumorais.",
+    question: "As células NK pertencem principalmente a qual imunidade?",
+    options: { A: "Humoral", B: "Inata", C: "Artificial", D: "Passiva" },
+    correct: "B",
+    explanation: "Células NK são linfócitos da imunidade inata que destroem células infectadas ou tumorais sem necessidade de sensibilização prévia.",
     tip: "Assassinas Naturais."
   },
   {
-    id: "e11",
-    difficulty: "easy",
-    question: "O que significa 'self' em imunologia?",
-    options: { A: "Moléculas próprias", B: "Patógenos", C: "Anticorpos", D: "Toxinas" },
+    id: "q6",
+    difficulty: "medium",
+    question: "Qual célula auxilia outras células do sistema imune?",
+    options: { A: "Linfócito T auxiliar", B: "Fibroblasto", C: "Hemácia", D: "Osteócito" },
     correct: "A",
-    explanation: "“Self” são componentes próprios reconhecidos como normais.",
-    tip: "Tradução direta do inglês para 'si mesmo'."
+    explanation: "Linfócitos T auxiliares (CD4+) coordenam a resposta imune através da secreção de citocinas.",
+    tip: "Também conhecida como célula T Helper."
   },
   {
-    id: "e12",
-    difficulty: "easy",
-    question: "Qual dos seguintes é um patógeno alvo do sistema imune?",
-    options: { A: "Vírus", B: "Bactérias", C: "Fungos", D: "Todas as anteriores" },
+    id: "q7",
+    difficulty: "medium",
+    question: "As células T CD8 reconhecem antígenos apresentados por:",
+    options: { A: "MHC classe II", B: "IgA", C: "MHC classe I", D: "Basófilos" },
+    correct: "C",
+    explanation: "Células T citotóxicas (CD8+) reconhecem peptídeos endógenos apresentados via MHC I.",
+    tip: "MHC I está presente em quase todas as células nucleadas."
+  },
+  {
+    id: "q8",
+    difficulty: "medium",
+    question: "Qual célula libera histamina nas alergias?",
+    options: { A: "Monócito", B: "Basófilo", C: "Plaqueta", D: "Hemácia" },
+    correct: "B",
+    explanation: "Basófilos e mastócitos possuem grânulos ricos em histamina, liberados em processos alérgicos.",
+    tip: "É um granulócito circulante."
+  },
+  {
+    id: "q9",
+    difficulty: "medium",
+    question: "A perforina é responsável principalmente por:",
+    options: { A: "Transporte de oxigênio", B: "Produção de anticorpos", C: "Lise celular", D: "Formação de plaquetas" },
+    correct: "C",
+    explanation: "Perforinas criam poros na membrana da célula alvo, levando à sua destruição (lise).",
+    tip: "O nome sugere 'perfurar'."
+  },
+  {
+    id: "q10",
+    difficulty: "hard",
+    question: "Qual célula pode apresentar antígenos utilizando MHC II?",
+    options: { A: "Neurônio", B: "Hemácia", C: "Plaqueta", D: "Célula B" },
     correct: "D",
-    explanation: "SI combate vírus, bactérias, fungos, protozoários e helmintos.",
-    tip: "O sistema imune é polivalente."
+    explanation: "Células B, macrófagos e células dendríticas são as APCs profissionais que expressam MHC II.",
+    tip: "É uma das três APCs profissionais."
   },
   {
-    id: "e13",
-    difficulty: "easy",
-    question: "Qual célula é a principal responsável pela fagocitose inicial em infecções agudas?",
-    options: { A: "Linfócito B", B: "Neutrófilo", C: "Plasmócito", D: "Linfócito T CD4" },
-    correct: "B",
-    explanation: "Neutrófilos são fagócitos rápidos e predominam na inflamação aguda.",
-    tip: "É a célula mais numerosa do sangue."
-  },
-  {
-    id: "e14",
-    difficulty: "easy",
-    question: "Qual estrutura é considerada uma barreira física da imunidade inata?",
-    options: { A: "Pele", B: "Anticorpo IgG", C: "Linfócito T", D: "MHC I" },
-    correct: "A",
-    explanation: "Pele e mucosas são barreiras físicas importantes.",
-    tip: "O maior órgão do corpo humano."
-  },
-  {
-    id: "e15",
-    difficulty: "easy",
-    question: "Qual célula libera histamina em reações alérgicas?",
-    options: { A: "Neutrófilo", B: "Mastócito", C: "NK", D: "Monócito" },
-    correct: "B",
-    explanation: "Mastócitos liberam histamina e participam de alergias.",
-    tip: "Célula tecidual com muitos grânulos."
-  },
-  {
-    id: "e16",
-    difficulty: "easy",
-    question: "Qual célula é mais associada à defesa contra parasitas (helmintos)?",
-    options: { A: "Eosinófilo", B: "Neutrófilo", C: "Hemácia", D: "Plaqueta" },
-    correct: "A",
-    explanation: "Eosinófilos atacam parasitas e participam de alergias.",
-    tip: "Seus grânulos coram-se com eosina."
-  },
-  {
-    id: "e17",
-    difficulty: "easy",
-    question: "Qual imunoglobulina é a primeira produzida na resposta primária?",
-    options: { A: "IgG", B: "IgE", C: "IgM", D: "IgA" },
+    id: "q11",
+    difficulty: "hard",
+    question: "Qual imunoglobulina participa mais das reações alérgicas?",
+    options: { A: "IgM", B: "IgA", C: "IgE", D: "IgG" },
     correct: "C",
-    explanation: "IgM é a primeira a aparecer na resposta primária.",
-    tip: "É um pentâmero gigante."
+    explanation: "A IgE liga-se a mastócitos e basófilos, desencadeando a desgranulação na presença de alérgenos.",
+    tip: "E de 'Espirro' ou 'Edema'."
   },
-
-  // MEDIUM (1-28)
   {
-    id: "m1",
-    difficulty: "medium",
-    question: "Qual receptor reconhece antígenos na superfície de linfócitos B?",
-    options: { A: "TCR", B: "PRR", C: "BCR", D: "MHC" },
+    id: "q12",
+    difficulty: "hard",
+    question: "Qual célula atua principalmente contra parasitas?",
+    options: { A: "Basófilo", B: "Eosinófilo", C: "Fibroblasto", D: "Hemácia" },
+    correct: "B",
+    explanation: "Eosinófilos são especializados no combate a helmintos e parasitas multicelulares.",
+    tip: "Seus grânulos são acidófilos."
+  },
+  {
+    id: "q13",
+    difficulty: "hard",
+    question: "Qual marcador caracteriza células T citotóxicas?",
+    options: { A: "CD8", B: "CD4", C: "CD20", D: "CD25" },
+    correct: "A",
+    explanation: "O marcador CD8 é a molécula correceptora das células T citotóxicas.",
+    tip: "Interage com o MHC classe I."
+  },
+  {
+    id: "q14",
+    difficulty: "hard",
+    question: "A apoptose é conhecida como:",
+    options: { A: "Produção de citocinas", B: "Divisão celular", C: "Morte celular programada", D: "Processo de coagulação" },
     correct: "C",
-    explanation: "Linfócitos B usam BCR para reconhecer antígenos.",
-    tip: "B-Cell Receptor."
+    explanation: "Apoptose é o processo de morte celular controlada e programada, sem inflamação.",
+    tip: "Diferente da necrose."
   },
   {
-    id: "m2",
-    difficulty: "medium",
-    question: "Qual receptor reconhece antígenos em linfócitos T?",
-    options: { A: "BCR", B: "TCR", C: "PRR", D: "IgE" },
-    correct: "B",
-    explanation: "Linfócitos T reconhecem antígenos via TCR.",
-    tip: "T-Cell Receptor."
-  },
-  {
-    id: "m3",
-    difficulty: "medium",
-    question: "O que são PAMPs?",
-    options: { A: "Proteínas de memória", B: "Padrões de patógenos", C: "Anticorpos", D: "Receptores T" },
-    correct: "B",
-    explanation: "PAMPs são padrões conservados presentes em patógenos.",
-    tip: "Pathogen-Associated Molecular Patterns."
-  },
-  {
-    id: "m4",
-    difficulty: "medium",
-    question: "O que são PRRs?",
-    options: { A: "Antígenos virais", B: "Receptores de PAMPs", C: "Anticorpos", D: "Genes MHC" },
-    correct: "B",
-    explanation: "PRRs detectam PAMPs e iniciam resposta inata.",
-    tip: "Pattern Recognition Receptors."
-  },
-  {
-    id: "m5",
-    difficulty: "medium",
-    question: "Qual molécula apresenta antígeno ao linfócito T?",
-    options: { A: "MHC", B: "IgM", C: "Complemento", D: "Hemoglobina" },
-    correct: "A",
-    explanation: "MHC apresenta peptídeos antigênicos a linfócitos T.",
-    tip: "Complexo Principal de Histocompatibilidade."
-  },
-  {
-    id: "m6",
-    difficulty: "medium",
-    question: "Qual molécula é coestimulatória na ativação linfocitária?",
-    options: { A: "CD28", B: "Insulina", C: "Hemoglobina", D: "Colágeno" },
-    correct: "A",
-    explanation: "CD28 e B7 são moléculas coestimuladoras.",
-    tip: "O segundo sinal necessário para a ativação."
-  },
-  {
-    id: "m7",
-    difficulty: "medium",
-    question: "Qual célula é a principal apresentadora de antígeno (APC)?",
-    options: { A: "Hemácia", B: "Célula dendrítica", C: "Neurônio", D: "Adipócito" },
-    correct: "B",
-    explanation: "Células dendríticas são APCs mais eficientes.",
-    tip: "Possuem prolongamentos que lembram dendritos nervosos."
-  },
-  {
-    id: "m8",
-    difficulty: "medium",
-    question: "Qual célula faz fagocitose e apresentação de antígenos?",
-    options: { A: "Macrófago", B: "Plaqueta", C: "Hemácia", D: "Osteócito" },
-    correct: "A",
-    explanation: "Macrófagos fagocitam e apresentam antígenos.",
-    tip: "Derivam dos monócitos sanguíneos."
-  },
-
-  // HARD (1-25)
-  {
-    id: "h1",
+    id: "q15",
     difficulty: "hard",
-    question: "Por que a humoral não explica sozinha a rejeição a transplantes?",
-    options: { A: "Anticorpos não existem", B: "Envolve mecanismos celulares", C: "B destroem enxertos", D: "Neutrófilos fazem memória" },
-    correct: "B",
-    explanation: "Rejeição e tolerância dependem fortemente de imunidade celular (T).",
-    tip: "O reconhecimento do MHC estranho é feito por células T."
-  },
-  {
-    id: "h2",
-    difficulty: "hard",
-    question: "Qual cientista descreveu a teoria fagocítica?",
-    options: { A: "Edward Jenner", B: "Elie Metchnikoff", C: "Zinkernagel", D: "Medawar" },
-    correct: "B",
-    explanation: "Metchnikoff descreveu fagocitose por macrófagos e neutrófilos.",
-    tip: "Ganhou o Nobel em 1908."
-  },
-  {
-    id: "h3",
-    difficulty: "hard",
-    question: "Qual órgão amadurece os linfócitos T?",
-    options: { A: "Linfonodo", B: "Timo", C: "Baço", D: "Placa de Peyer" },
-    correct: "B",
-    explanation: "Linfócitos T amadurecem no timo.",
-    tip: "T de Timo."
-  },
-  {
-    id: "h4",
-    difficulty: "hard",
-    question: "A remoção da Bursa de Fabricius em aves afeta qual célula?",
-    options: { A: "Linfócitos T", B: "Linfócitos B", C: "Neutrófilos", D: "Mastócitos" },
-    correct: "B",
-    explanation: "Bursa é essencial para desenvolvimento de células B em aves.",
-    tip: "B de Bursa."
-  },
-  {
-    id: "h5",
-    difficulty: "hard",
-    question: "Qual é a consequência de falhas do sistema imune?",
-    options: { A: "Imunodeficiências e tumores", B: "Aumento de glicose", C: "Aumento de massa", D: "Produção de Vit D" },
-    correct: "A",
-    explanation: "Falhas levam a imunodeficiências e maior risco de tumores.",
-    tip: "O corpo fica sem vigilância."
-  },
-  {
-    id: "h6",
-    difficulty: "hard",
-    question: "Qual fenômeno causa choque de transfusão?",
-    options: { A: "Tolerância", B: "Incompatibilidade sanguínea", C: "Falha na fagocitose", D: "Aumento de IgA" },
-    correct: "B",
-    explanation: "Transfusão incompatível desencadeia reação imunológica grave.",
-    tip: "Anticorpos atacando as hemácias doadas."
-  },
-  {
-    id: "h7",
-    difficulty: "hard",
-    question: "Quais os pilares da organização do sistema imune?",
-    options: { A: "Molecular, celular e anatômica", B: "Digestiva, nervosa e hormonal", C: "Muscular e renal", D: "Cardiovascular e cutânea" },
-    correct: "A",
-    explanation: "Bases do SI são molecular, celular e anatômica/histológica.",
-    tip: "Do micro ao macro."
+    question: "O reconhecimento de antígenos pelos linfócitos T ocorre através do:",
+    options: { A: "Retículo endoplasmático", B: "Complexo de Golgi", C: "Ribossomo", D: "Receptor de célula T" },
+    correct: "D",
+    explanation: "O TCR (T-Cell Receptor) é o complexo proteico responsável pelo reconhecimento de antígenos apresentados via MHC.",
+    tip: "Sigla em inglês: TCR."
   }
 ];

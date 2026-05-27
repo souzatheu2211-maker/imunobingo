@@ -51,7 +51,12 @@ const MillionaireGame = () => {
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
-  const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
+  
+  // Verifica se já respondeu nesta rodada
+  const myAnswer = answers.find(a => 
+    a.player_id === myPlayer?.id && 
+    a.question_index === room?.current_question_index
+  );
 
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
@@ -62,10 +67,8 @@ const MillionaireGame = () => {
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
         
-        // O Host aguarda o tempo acabar para revelar
         if (remaining === 0 && room.host_id === currentUserId) {
-          // Pequeno delay de 2s para garantir que todas as respostas viajem pela rede
-          setTimeout(() => handleRevealPhase(), 2000);
+          setTimeout(() => handleRevealPhase(), 1500);
         }
       };
       updateTimer();
@@ -74,12 +77,11 @@ const MillionaireGame = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId]);
+  }, [room?.phase, room?.question_started_at, room.host_id, currentUserId]);
 
   const handleRevealPhase = async () => {
     if (room.host_id !== currentUserId) return;
     
-    // Busca as respostas mais recentes do banco
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
@@ -93,7 +95,6 @@ const MillionaireGame = () => {
       if (player.is_eliminated) continue;
       
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
-      // Se não respondeu, is_correct é false
       const isCorrect = playerAns ? playerAns.is_correct : false;
       
       let newValue = player.current_value;
@@ -118,7 +119,6 @@ const MillionaireGame = () => {
         }
       }
       
-      // Regra especial da pergunta do Anticorpo: o último colocado é eliminado
       if (currentQuestion.isAntibody && player.id === lastPlayer?.id) eliminated = true;
 
       await supabase.from('millionaire_players')
@@ -151,7 +151,6 @@ const MillionaireGame = () => {
           question_started_at: new Date().toISOString() 
         }).eq('id', roomId);
         
-        // Reseta estados locais para a próxima pergunta
         setSelectedChoice(null);
         setHiddenOptions([]);
         setShowTip(false);
@@ -172,33 +171,40 @@ const MillionaireGame = () => {
     }
     
     setSelectedChoice(key);
-    
-    if (currentQuestion.isGreed && key === 'A') {
-      const isLeader = [...players].sort((a, b) => b.current_value - a.current_value)[0]?.id === myPlayer?.id;
-      if (isLeader) setShowGreedSelection(true);
-      else { 
-        showError("Apenas o líder pode ser ganancioso!"); 
-        setSelectedChoice(null); 
-      }
-    }
   };
 
   const submitAnswer = async () => {
-    if (!selectedChoice || !myPlayer || myPlayer.is_eliminated || room?.phase !== 'question' || myAnswer) return;
+    // Verificação simplificada para garantir que o botão funcione
+    if (!selectedChoice || !myPlayer || myPlayer.is_eliminated) {
+      if (!selectedChoice) showError("Selecione uma opção primeiro!");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      const isCorrect = selectedChoice === currentQuestion.correct;
+      
       const { error } = await supabase.from('millionaire_answers').insert({ 
         room_id: roomId, 
         player_id: myPlayer.id, 
         question_index: room.current_question_index, 
         answer: selectedChoice, 
-        is_correct: selectedChoice === currentQuestion.correct 
+        is_correct: isCorrect 
       });
       
       if (error) throw error;
-      showSuccess("Resposta enviada!");
-    } catch (error) { 
-      showError("Erro ao enviar resposta."); 
+
+      // Atualiza localmente para feedback imediato e desativar o botão
+      setAnswers(prev => [...prev, {
+        player_id: myPlayer.id,
+        question_index: room.current_question_index,
+        answer: selectedChoice,
+        is_correct: isCorrect
+      }]);
+
+      showSuccess("Resposta confirmada!");
+    } catch (error: any) { 
+      showError("Erro ao enviar: " + error.message); 
     } finally { 
       setSubmitting(false); 
     }
@@ -207,7 +213,6 @@ const MillionaireGame = () => {
   const startGame = async () => {
     if (room.host_id !== currentUserId) return;
     
-    // Sorteio seguindo a ordem exata solicitada
     const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5);
     const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5);
     const hard = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'hard').sort(() => Math.random() - 0.5);
@@ -216,16 +221,15 @@ const MillionaireGame = () => {
     const antibodyBonus = MILLIONAIRE_QUESTIONS.find(q => q.id === 'antibody_bonus')!;
     const greedTrap = MILLIONAIRE_QUESTIONS.find(q => q.id === 'greed_trap')!;
 
-    // Ordem: 2 fáceis, Prof (3ª), 3 fáceis, Anticorpo (7ª), 4 médias, Ganância (12ª), 1 média, 5 difíceis
     const questionIds = [
-      easy[0].id, easy[1].id, // 1-2: Fácil
-      profBonus.id,           // 3: Professor
-      easy[2].id, easy[3].id, easy[4].id, // 4-6: Fácil
-      antibodyBonus.id,       // 7: Anticorpo
-      medium[0].id, medium[1].id, medium[2].id, medium[3].id, // 8-11: Médio
-      greedTrap.id,           // 12: Ganância
-      medium[4].id,           // 13: Médio
-      hard[0].id, hard[1].id, hard[2].id, hard[3].id, hard[4].id // 14-18: Difícil
+      easy[0].id, easy[1].id, 
+      profBonus.id,           
+      easy[2].id, easy[3].id, easy[4].id, 
+      antibodyBonus.id,       
+      medium[0].id, medium[1].id, medium[2].id, medium[3].id, 
+      greedTrap.id,           
+      medium[4].id,           
+      hard[0].id, hard[1].id, hard[2].id, hard[3].id, hard[4].id 
     ];
 
     await supabase.from('millionaire_rooms').update({ 
@@ -363,8 +367,25 @@ const MillionaireGame = () => {
               ))}
             </div>
 
-            {!myAnswer && !myPlayer?.is_eliminated && !showGreedSelection && (
-              <div className="flex justify-center"><Button onClick={submitAnswer} disabled={!selectedChoice || submitting} className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg shadow-xl">{submitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" />}CONFIRMAR</Button></div>
+            {!myAnswer && !myPlayer?.is_eliminated && (
+              <div className="flex justify-center">
+                <Button 
+                  onClick={submitAnswer} 
+                  disabled={!selectedChoice || submitting} 
+                  className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg shadow-xl transition-all active:scale-95"
+                >
+                  {submitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                  CONFIRMAR RESPOSTA
+                </Button>
+              </div>
+            )}
+            
+            {myAnswer && (
+              <div className="flex justify-center">
+                <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/30 px-8 py-4 rounded-2xl text-lg font-black animate-pulse">
+                  <CheckCircle2 className="mr-2 w-6 h-6" /> RESPOSTA REGISTRADA
+                </Badge>
+              </div>
             )}
           </div>
         ) : room.phase === 'reveal' ? (

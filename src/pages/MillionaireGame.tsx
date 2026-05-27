@@ -30,7 +30,6 @@ const MillionaireGame = () => {
   const navigate = useNavigate();
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
-  const [myPlayer, setMyPlayer] = useState<any>(null);
   const [answers, setAnswers] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(20);
@@ -48,6 +47,8 @@ const MillionaireGame = () => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Identifica o jogador atual de forma segura
+  const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
   
@@ -179,7 +180,7 @@ const MillionaireGame = () => {
     }
 
     if (!myPlayer) {
-      showError("Erro crítico: Perfil não sincronizado. Recarregue a página.");
+      showError("Aguarde a identificação do seu perfil...");
       return;
     }
 
@@ -245,46 +246,47 @@ const MillionaireGame = () => {
 
   useEffect(() => {
     const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return navigate('/login');
-      setCurrentUserId(user.id);
-      
-      const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
-      if (!roomData) return navigate('/millionaire');
-      setRoom(roomData);
-      
-      // Busca jogadores
-      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
-      const currentPlayers = playersData || [];
-      setPlayers(currentPlayers);
-
-      // Identifica ou cria o jogador atual
-      let currentPlayer = currentPlayers.find(p => p.user_id === user.id);
-      
-      if (!currentPlayer) {
-        const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
-        const { data: newPlayer, error: insertError } = await supabase.from('millionaire_players').insert({
-          room_id: roomId,
-          user_id: user.id,
-          name: profile?.full_name || 'Candidato',
-          avatar_url: profile?.avatar_url,
-          current_value: 0,
-          is_eliminated: false
-        }).select().single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return navigate('/login');
+        setCurrentUserId(user.id);
         
-        if (newPlayer) {
-          currentPlayer = newPlayer;
-          setPlayers(prev => [...prev, newPlayer]);
+        const { data: roomData, error: roomError } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
+        if (roomError || !roomData) return navigate('/millionaire');
+        setRoom(roomData);
+        
+        const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
+        const currentPlayers = playersData || [];
+        setPlayers(currentPlayers);
+
+        // Tenta encontrar ou criar o jogador
+        let currentPlayer = currentPlayers.find(p => p.user_id === user.id);
+        if (!currentPlayer) {
+          const { data: profile } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single();
+          const { data: newPlayer } = await supabase.from('millionaire_players').insert({
+            room_id: roomId,
+            user_id: user.id,
+            name: profile?.full_name || 'Candidato',
+            avatar_url: profile?.avatar_url,
+            current_value: 0,
+            is_eliminated: false
+          }).select().single();
+          
+          if (newPlayer) {
+            setPlayers(prev => [...prev, newPlayer]);
+          }
         }
+        
+        const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
+        setAnswers(answersData || []);
+      } catch (err) {
+        console.error("Erro no setup:", err);
+        showError("Erro ao carregar sala.");
+      } finally {
+        setLoading(false);
       }
-      
-      setMyPlayer(currentPlayer);
-      
-      const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
-      setAnswers(answersData || []);
-      
-      setLoading(false);
     };
+    
     setup();
 
     const channel = supabase.channel(`millionaire_realtime_${roomId}`)
@@ -297,16 +299,15 @@ const MillionaireGame = () => {
           });
         } else if (payload.eventType === 'UPDATE') {
           setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
-          if (payload.new.user_id === currentUserId) setMyPlayer(payload.new);
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => setAnswers(prev => [...prev, payload.new]))
       .subscribe();
       
     return () => { supabase.removeChannel(channel); };
-  }, [roomId, navigate, currentUserId]);
+  }, [roomId, navigate]);
 
-  if (loading || !room || !myPlayer) {
+  if (loading || !room) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-6">
         <div className="relative">
@@ -314,7 +315,7 @@ const MillionaireGame = () => {
           <Loader2 className="w-16 h-16 text-yellow-500 animate-spin relative" />
         </div>
         <div className="text-center space-y-2">
-          <p className="font-black uppercase tracking-[0.3em] text-xs text-yellow-500 animate-pulse">Sincronizando Biometria...</p>
+          <p className="font-black uppercase tracking-[0.3em] text-xs text-yellow-500 animate-pulse">Sincronizando Arena...</p>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Aguardando autorização do laboratório</p>
         </div>
       </div>

@@ -6,8 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS } from '@/data/millionaireQuestions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Trophy, Timer, Users, Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import MillionaireRanking from '@/components/MillionaireRanking';
+import { Trophy, Timer, Users, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const MillionairePresentation = () => {
@@ -68,11 +68,16 @@ const MillionairePresentation = () => {
       <div className="flex justify-between items-center">
         <div className="space-y-2">
           <h1 className="text-6xl font-black text-white tracking-tighter">
-            IMUNO<span className="text-yellow-500">MILIONÁRIO</span>
+            SHOW DO MILHÃO - <span className="text-yellow-500">IMUNOLOGIA</span>
           </h1>
-          <Badge className="bg-yellow-600/20 text-yellow-500 border-yellow-500/30 px-4 py-1 text-sm font-black">
-            ARENA DE CONHECIMENTO
-          </Badge>
+          <div className="flex items-center gap-4">
+            <Badge className="bg-yellow-600/20 text-yellow-500 border-yellow-500/30 px-4 py-1 text-sm font-black">
+              ARENA DE CONHECIMENTO
+            </Badge>
+            <span className="text-slate-500 font-black text-sm uppercase tracking-widest">
+              {players.length} JOGADORES ONLINE
+            </span>
+          </div>
         </div>
         
         <div className="flex items-center gap-12">
@@ -149,30 +154,8 @@ const MillionairePresentation = () => {
               </Badge>
             </div>
             
-            <div className="p-8 space-y-4">
-              {players.sort((a, b) => b.current_value - a.current_value).map((p, i) => (
-                <div key={p.id} className={cn(
-                  "flex items-center justify-between p-6 rounded-3xl border transition-all duration-500",
-                  p.is_eliminated ? "opacity-30 bg-red-500/5 border-red-500/10 grayscale" : "bg-white/5 border-white/10"
-                )}>
-                  <div className="flex items-center gap-4">
-                    <span className={cn("text-2xl font-black w-8", i === 0 ? "text-yellow-500" : "text-slate-600")}>{i + 1}º</span>
-                    <Avatar className="w-12 h-12 border border-white/10">
-                      <AvatarImage src={p.avatar_url} className="object-cover" />
-                      <AvatarFallback className="font-black">{p.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-black text-white tracking-tight">{p.name}</span>
-                      <span className={cn("text-[10px] font-black uppercase", p.is_eliminated ? "text-red-500" : "text-emerald-500")}>
-                        {p.is_eliminated ? "Eliminado" : "Ativo"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="p-8">
+              <MillionaireRanking players={players} currentUserId={null} />
             </div>
           </Card>
         </div>

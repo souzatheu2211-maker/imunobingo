@@ -7,11 +7,11 @@ import { MILLIONAIRE_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQu
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import MillionaireRanking from '@/components/MillionaireRanking';
 import { 
   Trophy, Timer, Users, LogOut, Monitor, Sparkles, CheckCircle2, 
-  Loader2, Send, XCircle, Ghost, AlertCircle, Split, Lightbulb, 
-  Repeat, ShieldCheck, HandMetal, Skull 
+  Loader2, Send, Split, Lightbulb, Repeat, ShieldCheck, Ghost,
+  TrendingUp, TrendingDown
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -36,6 +36,7 @@ const MillionaireGame = () => {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [scoreChange, setScoreChange] = useState<{ type: 'up' | 'down', value: number } | null>(null);
   
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
@@ -46,8 +47,8 @@ const MillionaireGame = () => {
   const [firstWrongDone, setFirstWrongDone] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevScoreRef = useRef<number>(0);
   
-  // Identifica o jogador atual de forma segura
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
@@ -56,6 +57,20 @@ const MillionaireGame = () => {
     a.player_id === myPlayer?.id && 
     Number(a.question_index) === Number(room?.current_question_index)
   );
+
+  // Monitora mudanças de pontuação para animação
+  useEffect(() => {
+    if (myPlayer) {
+      if (myPlayer.current_value > prevScoreRef.current) {
+        setScoreChange({ type: 'up', value: myPlayer.current_value - prevScoreRef.current });
+        setTimeout(() => setScoreChange(null), 3000);
+      } else if (myPlayer.current_value < prevScoreRef.current) {
+        setScoreChange({ type: 'down', value: prevScoreRef.current - myPlayer.current_value });
+        setTimeout(() => setScoreChange(null), 3000);
+      }
+      prevScoreRef.current = myPlayer.current_value;
+    }
+  }, [myPlayer?.current_value]);
 
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
@@ -324,42 +339,46 @@ const MillionaireGame = () => {
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
-      {/* Ranking Lateral */}
+      {/* Ranking Lateral Estilo Show do Milhão */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
-        <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
+        <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
           <div className="p-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Candidatos</h3>
-            <Users className="w-3 h-3 text-blue-400" />
+            <div className="flex flex-col">
+              <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em]">Candidatos</h3>
+              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{players.length} Online</span>
+            </div>
+            <Users className="w-4 h-4 text-blue-400" />
           </div>
-          <div className="p-4 space-y-3">
-            {players.sort((a, b) => b.current_value - a.current_value).map(p => (
-              <div key={p.id} className={cn("flex items-center justify-between p-2 rounded-xl transition-colors", p.is_eliminated ? "bg-red-500/5" : "bg-white/5")}>
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-8 h-8 border border-white/10">
-                    <AvatarImage src={p.avatar_url} className="object-cover" />
-                    <AvatarFallback className="bg-yellow-600 text-[10px] font-black text-white">{p.name?.[0] || '?'}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <span className={cn("text-xs font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>{p.name}</span>
-                    {p.is_eliminated && <span className="text-[8px] text-red-500 font-black uppercase">Eliminado</span>}
-                  </div>
-                </div>
-                <span className="text-[10px] font-black text-yellow-500">R$ {p.current_value.toLocaleString()}</span>
-              </div>
-            ))}
+          <div className="p-4">
+            <MillionaireRanking players={players} currentUserId={currentUserId} />
           </div>
         </Card>
 
-        <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
-          <div className="p-4 bg-white/5 border-b border-white/5"><h3 className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.3em]">Prêmios Acumulativos</h3></div>
+        <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden hidden lg:block">
+          <div className="p-4 bg-white/5 border-b border-white/5">
+            <h3 className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.3em]">Prêmios Acumulativos</h3>
+          </div>
           <div className="p-2 space-y-1">
             {[...PRIZES].reverse().map((prize, idx) => {
               const levelIdx = PRIZES.length - 1 - idx;
               const isCurrent = room.current_question_index === levelIdx;
               return (
-                <div key={idx} className={cn("flex justify-between px-4 py-1.5 rounded-xl text-[11px] font-black transition-all", isCurrent ? "bg-yellow-600 text-white scale-105 shadow-lg z-10" : CHECKPOINTS.includes(levelIdx) ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/10" : "text-slate-500")}>
-                  <div className="flex items-center gap-2"><span>{levelIdx + 1}</span>{CHECKPOINTS.includes(levelIdx) && <ShieldCheck className="w-3 h-3" />}</div>
-                  <span>+ R$ {prize.toLocaleString()}</span>
+                <div 
+                  key={idx} 
+                  className={cn(
+                    "flex justify-between px-4 py-1.5 rounded-xl text-[11px] font-black transition-all", 
+                    isCurrent 
+                      ? "bg-yellow-600 text-white scale-105 shadow-lg z-10" 
+                      : CHECKPOINTS.includes(levelIdx) 
+                        ? "text-emerald-400 bg-emerald-500/5 border border-emerald-500/10" 
+                        : "text-slate-500"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{levelIdx + 1}</span>
+                    {CHECKPOINTS.includes(levelIdx) && <ShieldCheck className="w-3 h-3" />}
+                  </div>
+                  <span>R$ {prize.toLocaleString()}</span>
                 </div>
               );
             })}
@@ -367,42 +386,145 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
-      {/* Área Principal */}
+      {/* Área Principal do Jogo */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
-        <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
-          <div className="flex items-center gap-3"><Trophy className="text-yellow-500" /><span className="font-black text-white tracking-tight uppercase">Sala #{room.code}</span></div>
+        <div className="flex items-center justify-between bg-white/5 p-5 rounded-3xl border border-white/10 backdrop-blur-xl relative overflow-hidden">
+          {/* Animação de Pontos */}
+          {scoreChange && (
+            <div className={cn(
+              "absolute inset-0 flex items-center justify-center z-50 pointer-events-none animate-in fade-in zoom-in duration-500",
+              scoreChange.type === 'up' ? "bg-emerald-500/10" : "bg-red-500/10"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2 text-2xl font-black",
+                scoreChange.type === 'up' ? "text-emerald-400" : "text-red-400"
+              )}>
+                {scoreChange.type === 'up' ? <TrendingUp className="w-8 h-8" /> : <TrendingDown className="w-8 h-8" />}
+                {scoreChange.type === 'up' ? '+' : '-'} R$ {scoreChange.value.toLocaleString()}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-4">
-            {myPlayer?.is_eliminated && <Badge className="bg-red-600/20 text-red-500 border-red-500/30 flex items-center gap-2 px-3 py-1 animate-pulse"><Ghost className="w-3 h-3" /> ESPECTADOR</Badge>}
-            {room.host_id === currentUserId && <Button variant="outline" size="sm" className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10" onClick={() => window.open(`/millionaire/${roomId}/presentation`, '_blank')}><Monitor className="w-4 h-4 mr-2" /> PROJETOR</Button>}
-            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/millionaire')}><LogOut className="w-4 h-4 mr-2" /> SAIR</Button>
+            <div className="bg-yellow-500/20 p-3 rounded-2xl">
+              <Trophy className="text-yellow-500 w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em]">Show do Milhão</h1>
+              <p className="text-xl font-black text-white tracking-tight uppercase">IMUNOLOGIA</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {myPlayer?.is_eliminated && (
+              <Badge className="bg-red-600/20 text-red-500 border-red-500/30 flex items-center gap-2 px-4 py-2 animate-pulse rounded-xl">
+                <Ghost className="w-4 h-4" /> ESPECTADOR
+              </Badge>
+            )}
+            {room.host_id === currentUserId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-xl h-11" 
+                onClick={() => window.open(`/millionaire/${roomId}/presentation`, '_blank')}
+              >
+                <Monitor className="w-4 h-4 mr-2" /> PROJETOR
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400 h-11 rounded-xl" onClick={() => navigate('/millionaire')}>
+              <LogOut className="w-4 h-4 mr-2" /> SAIR
+            </Button>
           </div>
         </div>
 
         {room.phase === 'waiting' ? (
-          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl">
-            <Sparkles className="w-16 h-16 text-yellow-500 mx-auto animate-pulse" /><h2 className="text-4xl font-black text-white">Pronto para o Milhão?</h2>
-            {room.host_id === currentUserId && <Button onClick={startGame} size="lg" className="bg-yellow-600 hover:bg-yellow-500 font-black px-16 h-20 rounded-3xl text-xl">INICIAR DESAFIO</Button>}
+          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl border-t-white/20">
+            <div className="w-24 h-24 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
+              <Sparkles className="w-12 h-12 text-yellow-500" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-4xl font-black text-white tracking-tighter">Pronto para o Milhão?</h2>
+              <p className="text-slate-400 font-medium">Aguardando o host iniciar a sessão de perguntas.</p>
+            </div>
+            {room.host_id === currentUserId && (
+              <Button onClick={startGame} size="lg" className="bg-yellow-600 hover:bg-yellow-500 font-black px-16 h-20 rounded-3xl text-xl shadow-2xl shadow-yellow-900/40 transition-all active:scale-95">
+                INICIAR DESAFIO
+              </Button>
+            )}
           </Card>
         ) : room.phase === 'question' ? (
           <div className="space-y-8">
             <div className="flex flex-wrap justify-center gap-4">
-              <Button onClick={() => { setUsed5050(true); const incorrect = Object.keys(currentQuestion.options).filter(k => k !== currentQuestion.correct); setHiddenOptions(incorrect.sort(() => Math.random() - 0.5).slice(0, 2)); }} disabled={used5050 || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} className={cn("h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all", used5050 || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-violet-600 text-white shadow-lg")}><Split className="w-5 h-5" /> 50/50</Button>
-              <Button onClick={() => { setUsedDouble(true); setDoubleChanceActive(true); }} disabled={usedDouble || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} className={cn("h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all", usedDouble || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg")}><Repeat className="w-5 h-5" /> DUPLA CHANCE</Button>
-              <Button onClick={() => { setUsedTip(true); setShowTip(true); }} disabled={usedTip || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} className={cn("h-14 px-6 rounded-2xl font-black flex items-center gap-2 transition-all", usedTip || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-emerald-600 text-white shadow-lg")}><Lightbulb className="w-5 h-5" /> DICA</Button>
+              <Button 
+                onClick={() => { 
+                  setUsed5050(true); 
+                  const incorrect = Object.keys(currentQuestion.options).filter(k => k !== currentQuestion.correct); 
+                  setHiddenOptions(incorrect.sort(() => Math.random() - 0.5).slice(0, 2)); 
+                }} 
+                disabled={used5050 || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} 
+                className={cn(
+                  "h-14 px-8 rounded-2xl font-black flex items-center gap-2 transition-all", 
+                  used5050 || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-violet-600 text-white shadow-lg shadow-violet-900/20"
+                )}
+              >
+                <Split className="w-5 h-5" /> 50/50
+              </Button>
+              <Button 
+                onClick={() => { setUsedDouble(true); setDoubleChanceActive(true); }} 
+                disabled={usedDouble || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} 
+                className={cn(
+                  "h-14 px-8 rounded-2xl font-black flex items-center gap-2 transition-all", 
+                  usedDouble || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                )}
+              >
+                <Repeat className="w-5 h-5" /> DUPLA CHANCE
+              </Button>
+              <Button 
+                onClick={() => { setUsedTip(true); setShowTip(true); }} 
+                disabled={usedTip || !!myAnswer || currentQuestion.difficulty === 'special' || myPlayer?.is_eliminated} 
+                className={cn(
+                  "h-14 px-8 rounded-2xl font-black flex items-center gap-2 transition-all", 
+                  usedTip || currentQuestion.difficulty === 'special' ? "bg-slate-800 text-slate-600" : "bg-emerald-600 text-white shadow-lg shadow-emerald-900/20"
+                )}
+              >
+                <Lightbulb className="w-5 h-5" /> DICA
+              </Button>
             </div>
 
-            {showTip && <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-emerald-400 text-center font-bold italic animate-in slide-in-from-top">"{currentQuestion.tip}"</div>}
+            {showTip && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl text-emerald-400 text-center font-bold italic animate-in slide-in-from-top duration-500">
+                <Sparkles className="w-4 h-4 inline mr-2" /> "{currentQuestion.tip}"
+              </div>
+            )}
 
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-yellow-500" />
-              <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full border border-orange-500/30"><Timer className="w-4 h-4 text-orange-600" /><span className="text-orange-600 font-black text-lg">{timeLeft}s</span></div>
-              <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight mt-4">{currentQuestion.question}</h2>
+              <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-5 py-2 rounded-full border border-orange-500/30">
+                <Timer className="w-5 h-5 text-orange-600" />
+                <span className="text-orange-600 font-black text-xl tabular-nums">{timeLeft}s</span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight mt-4 tracking-tight">
+                {currentQuestion.question}
+              </h2>
             </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(currentQuestion.options).map(([key, val]) => (
-                <Button key={key} disabled={myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)} onClick={() => handleChoiceClick(key)} className={cn("h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8", myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white" : selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" : hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" : "bg-white/5 border-white/10 text-white hover:bg-white/10", myPlayer?.is_eliminated && "opacity-60")}>
-                  <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>{val}
+                <Button 
+                  key={key} 
+                  disabled={myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)} 
+                  onClick={() => handleChoiceClick(key)} 
+                  className={cn(
+                    "h-24 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8", 
+                    myAnswer?.answer === key ? "bg-yellow-600 border-yellow-400 text-white" : 
+                    selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" : 
+                    hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" : 
+                    "bg-white/5 border-white/10 text-white hover:bg-white/10", 
+                    myPlayer?.is_eliminated && "opacity-60"
+                  )}
+                >
+                  <span className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mr-5 text-base">{key}</span>
+                  {val}
                 </Button>
               ))}
             </div>
@@ -412,9 +534,9 @@ const MillionaireGame = () => {
                 <Button 
                   onClick={submitAnswer} 
                   disabled={!selectedChoice || submitting} 
-                  className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg shadow-xl transition-all active:scale-95"
+                  className="h-20 px-16 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-[2rem] text-xl shadow-2xl shadow-emerald-900/40 transition-all active:scale-95"
                 >
-                  {submitting ? <Loader2 className="animate-spin mr-2" /> : <Send className="mr-2" />}
+                  {submitting ? <Loader2 className="animate-spin mr-3 w-6 h-6" /> : <Send className="mr-3 w-6 h-6" />}
                   CONFIRMAR RESPOSTA
                 </Button>
               </div>
@@ -422,28 +544,39 @@ const MillionaireGame = () => {
             
             {myAnswer && (
               <div className="flex justify-center">
-                <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/30 px-8 py-4 rounded-2xl text-lg font-black animate-pulse">
-                  <CheckCircle2 className="mr-2 w-6 h-6" /> RESPOSTA REGISTRADA
+                <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/30 px-10 py-5 rounded-[2rem] text-xl font-black animate-pulse">
+                  <CheckCircle2 className="mr-3 w-7 h-7" /> RESPOSTA REGISTRADA
                 </Badge>
               </div>
             )}
           </div>
         ) : room.phase === 'reveal' ? (
-          <div className="space-y-8 animate-in zoom-in">
-            <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center"><h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2><div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">{currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}</div><p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p></Card>
+          <div className="space-y-8 animate-in zoom-in duration-700">
+            <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center">
+              <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-6">Resposta Correta</h2>
+              <div className="bg-emerald-500 text-white p-10 rounded-[2.5rem] text-4xl md:text-5xl font-black shadow-2xl shadow-emerald-900/20">
+                {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
+              </div>
+              <div className="mt-10 p-8 bg-slate-100 rounded-3xl border border-slate-200">
+                <p className="text-slate-700 text-lg font-bold italic leading-relaxed">
+                  "{currentQuestion.explanation}"
+                </p>
+              </div>
+            </Card>
           </div>
         ) : room.phase === 'finished' ? (
-          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl">
-            <Trophy className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" /><h2 className="text-6xl font-black text-white tracking-tighter">FIM DE JOGO</h2>
-            <div className="max-w-md mx-auto space-y-4">
-              {players.sort((a, b) => b.current_value - a.current_value).map((p, i) => (
-                <div key={p.id} className={cn("flex items-center justify-between p-6 rounded-3xl border", i === 0 ? "bg-yellow-600/20 border-yellow-500" : "bg-white/5 border-white/10")}>
-                  <div className="flex items-center gap-4"><span className="font-black text-white text-xl">{i + 1}º</span><Avatar className="w-10 h-10 border border-white/10"><AvatarImage src={p.avatar_url} className="object-cover" /><AvatarFallback className="bg-yellow-600 font-black text-white">{p.name?.[0]}</AvatarFallback></Avatar><span className="font-black text-white text-xl">{p.name}</span></div>
-                  <span className="text-yellow-500 font-black text-xl">R$ {p.current_value.toLocaleString()}</span>
-                </div>
-              ))}
+          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-10 backdrop-blur-2xl border-t-white/20">
+            <Trophy className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" />
+            <div className="space-y-2">
+              <h2 className="text-6xl font-black text-white tracking-tighter">FIM DE JOGO</h2>
+              <p className="text-slate-400 text-xl font-medium">Confira o ranking final dos imunologistas.</p>
             </div>
-            <Button onClick={() => navigate('/modes')} variant="outline" className="h-16 px-12 rounded-2xl font-black text-lg border-white/10 hover:bg-white/5">VOLTAR AO MENU</Button>
+            <div className="max-w-2xl mx-auto">
+              <MillionaireRanking players={players} currentUserId={currentUserId} />
+            </div>
+            <Button onClick={() => navigate('/modes')} variant="outline" className="h-16 px-12 rounded-2xl font-black text-lg border-white/10 hover:bg-white/5">
+              VOLTAR AO MENU
+            </Button>
           </Card>
         ) : null}
       </div>

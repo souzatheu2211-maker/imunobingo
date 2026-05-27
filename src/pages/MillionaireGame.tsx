@@ -32,7 +32,8 @@ import {
   UserMinus,
   TrendingUp,
   TrendingDown,
-  ShieldAlert
+  ShieldAlert,
+  Clock
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -95,7 +96,13 @@ const MillionaireGame = () => {
 
   const currentQuestion = getActiveQuestion();
   const isSpecialPhase = room?.phase?.startsWith('special_');
-  const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index && a.phase === room?.phase);
+  
+  // Busca a resposta do jogador para a fase e questão atual
+  const myAnswer = answers.find(a => 
+    a.player_id === myPlayer?.id && 
+    a.question_index === room?.current_question_index && 
+    a.phase === room?.phase
+  );
 
   useEffect(() => {
     if (room?.phase?.includes('question') || room?.phase?.startsWith('special_')) {
@@ -108,8 +115,8 @@ const MillionaireGame = () => {
 
         if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal') && !processingResults) {
           setProcessingResults(true);
-          // Espera 2 segundos para garantir que todas as respostas foram salvas no Supabase
-          setTimeout(() => handleRevealPhase(), 2000);
+          // Buffer de 3 segundos para garantir que todas as respostas de rede lenta cheguem
+          setTimeout(() => handleRevealPhase(), 3000);
         }
       };
 
@@ -129,7 +136,7 @@ const MillionaireGame = () => {
     const currentPhase = room.phase;
     const isSpecial = currentPhase.startsWith('special_');
 
-    // Busca as respostas mais recentes do banco
+    // Busca as respostas e jogadores diretamente do banco para evitar dados obsoletos
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
@@ -137,7 +144,6 @@ const MillionaireGame = () => {
       .eq('question_index', room.current_question_index)
       .eq('phase', currentPhase);
 
-    // Busca os jogadores atuais para garantir dados frescos
     const { data: currentPlayersData } = await supabase
       .from('millionaire_players')
       .select('*')
@@ -189,7 +195,6 @@ const MillionaireGame = () => {
       }).eq('id', player.id);
     }
 
-    // Lógica especial da Surpresa: Elimina o último do ranking
     if (currentPhase === 'special_surprise') {
       const { data: activePlayersAfterUpdate } = await supabase
         .from('millionaire_players')
@@ -207,7 +212,6 @@ const MillionaireGame = () => {
       phase: isSpecial ? `reveal_${currentPhase}` : 'reveal' 
     }).eq('id', roomId);
 
-    // Tempo para os jogadores verem o veredito antes da próxima questão
     setTimeout(async () => {
       const { data: activePlayers } = await supabase
         .from('millionaire_players')
@@ -250,7 +254,7 @@ const MillionaireGame = () => {
       }).eq('id', roomId);
 
       if (nextPhase === 'finished') confetti();
-    }, 6000);
+    }, 7000);
   };
 
   const use5050 = () => {
@@ -294,7 +298,7 @@ const MillionaireGame = () => {
   };
 
   const submitAnswer = async () => {
-    if (!selectedChoice || myPlayer?.is_eliminated || !!myAnswer) return;
+    if (!selectedChoice || myPlayer?.is_eliminated || !!myAnswer || submitting) return;
     setSubmitting(true);
 
     const isCorrect = selectedChoice === currentQuestion.correct;
@@ -303,6 +307,7 @@ const MillionaireGame = () => {
       if (room.phase === 'special_malice') {
         if (selectedChoice === 'A') {
           setSelectedChoice('PICKING');
+          setSubmitting(false); // Permite escolher a vítima
         } else {
           await supabase.from('millionaire_answers').insert({
             room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
@@ -315,11 +320,10 @@ const MillionaireGame = () => {
           room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
           answer: selectedChoice, is_correct: isCorrect, phase: room.phase
         });
-        showSuccess("Resposta enviada!");
+        showSuccess("Resposta enviada com sucesso!");
       }
     } catch (error) {
-      showError("Erro ao enviar resposta.");
-    } finally {
+      showError("Erro ao enviar resposta. Tente novamente.");
       setSubmitting(false);
     }
   };
@@ -331,6 +335,7 @@ const MillionaireGame = () => {
     const confirmed = window.confirm(`Tem certeza que deseja eliminar ${target.name} e roubar seus R$ ${target.current_value.toLocaleString()}?`);
     if (!confirmed) return;
 
+    setSubmitting(true);
     try {
       await supabase.from('millionaire_players').update({ is_eliminated: true, current_value: 0 }).eq('id', target.id);
       await supabase.from('millionaire_players').update({ current_value: target.current_value + myPlayer.current_value }).eq('id', myPlayer.id);
@@ -343,6 +348,7 @@ const MillionaireGame = () => {
       showError("A GANÂNCIA TE DESTRUIU!");
     } catch (e) {
       showError("Erro na transação.");
+      setSubmitting(false);
     }
   };
 
@@ -384,6 +390,7 @@ const MillionaireGame = () => {
           setDoubleChanceActive(false); 
           setFirstWrongDone(false);
           setHelpUsedThisRound(false);
+          setSubmitting(false);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
@@ -442,7 +449,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={use5050}
-              disabled={helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 used5050 ? "opacity-30 grayscale" : "hover:bg-emerald-500/10 hover:border-emerald-500/30"
@@ -454,7 +461,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={useDoubleChance}
-              disabled={helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 usedDouble ? "opacity-30 grayscale" : "hover:bg-blue-500/10 hover:border-blue-500/30"
@@ -466,7 +473,7 @@ const MillionaireGame = () => {
             <Button 
               variant="outline" 
               onClick={useTipHelp}
-              disabled={helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated}
+              disabled={helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
                 usedTip ? "opacity-30 grayscale" : "hover:bg-yellow-500/10 hover:border-yellow-500/30"
@@ -530,6 +537,7 @@ const MillionaireGame = () => {
                 <Button 
                   key={p.id} 
                   onClick={() => handleMaliceElimination(p.id)}
+                  disabled={submitting}
                   className="h-24 bg-white/5 border-white/10 hover:bg-red-600/20 rounded-3xl flex items-center justify-between px-8"
                 >
                   <div className="flex items-center gap-4">
@@ -593,7 +601,7 @@ const MillionaireGame = () => {
                     onClick={() => handleChoiceClick(key)}
                     className={cn(
                       "h-20 rounded-3xl font-black text-xl transition-all border-2 text-left justify-start px-8",
-                      selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white hover:bg-white/10",
+                      (selectedChoice === key || myAnswer?.answer === key) ? "bg-blue-600 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white hover:bg-white/10",
                       hiddenOptions.includes(key) && "opacity-0 pointer-events-none"
                     )}
                   >
@@ -604,11 +612,20 @@ const MillionaireGame = () => {
               </div>
             )}
 
-            {selectedChoice && !submitting && (
+            {selectedChoice && !submitting && !myAnswer && (
               <div className="flex justify-center">
                 <Button onClick={submitAnswer} className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg shadow-xl shadow-emerald-900/20">
                   CONFIRMAR DECISÃO
                 </Button>
+              </div>
+            )}
+
+            {(submitting || !!myAnswer) && (
+              <div className="flex flex-col items-center gap-4 animate-pulse">
+                <div className="flex items-center gap-2 text-emerald-400 font-black uppercase tracking-widest">
+                  <CheckCircle2 className="w-5 h-5" /> Resposta Registrada
+                </div>
+                <p className="text-slate-500 text-xs font-bold">Aguardando processamento do laboratório...</p>
               </div>
             )}
           </div>

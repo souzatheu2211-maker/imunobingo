@@ -7,7 +7,7 @@ import { MILLIONAIRE_QUESTIONS, SPECIAL_QUESTIONS } from '@/data/millionaireQues
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Trophy, Timer, Users, Sparkles, Skull, Flame, AlertTriangle } from 'lucide-react';
+import { Trophy, Timer, Users, Sparkles, Skull, Flame, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const MillionairePresentation = () => {
@@ -66,7 +66,7 @@ const MillionairePresentation = () => {
 
   return (
     <div className={cn(
-      "min-h-screen p-12 flex flex-col gap-12 transition-colors duration-1000",
+      "min-h-screen p-12 flex flex-col gap-12 transition-all duration-1000",
       room.phase === 'special_professor' || room.phase === 'reveal_special_professor' ? "bg-red-950" :
       room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise' ? "bg-blue-950" :
       room.phase === 'special_malice' || room.phase === 'reveal_special_malice' ? "bg-purple-950" :
@@ -97,7 +97,18 @@ const MillionairePresentation = () => {
                 "rounded-[4rem] p-16 shadow-2xl relative overflow-hidden border-none",
                 room.phase?.startsWith('special_') || room.phase?.startsWith('reveal_special') ? "bg-white/10 text-white" : "bg-white text-slate-950"
               )}>
-                <h2 className="text-5xl md:text-6xl font-black text-center leading-tight tracking-tight">
+                {room.phase === 'special_professor' && (
+                  <div className="absolute top-8 left-1/2 -translate-x-1/2 flex items-center gap-3 text-red-500 font-black text-xl uppercase tracking-[0.4em] animate-pulse">
+                    <ShieldAlert className="w-8 h-8" /> ELIMINAÇÃO IMEDIATA
+                  </div>
+                )}
+                {room.phase === 'special_surprise' && (
+                  <div className="absolute top-8 left-1/2 -translate-x-1/2 flex items-center gap-3 text-blue-400 font-black text-xl uppercase tracking-[0.4em] animate-bounce">
+                    <Skull className="w-8 h-8" /> ÚLTIMO LUGAR SERÁ ELIMINADO
+                  </div>
+                )}
+
+                <h2 className="text-5xl md:text-7xl font-black text-center leading-tight tracking-tight mt-8">
                   {currentQuestion.question}
                 </h2>
               </Card>

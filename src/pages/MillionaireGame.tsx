@@ -29,7 +29,10 @@ import {
   Split,
   Skull,
   Flame,
-  UserMinus
+  UserMinus,
+  TrendingUp,
+  TrendingDown,
+  ShieldAlert
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -52,6 +55,7 @@ const MillionaireGame = () => {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [processingResults, setProcessingResults] = useState(false);
   
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
@@ -102,8 +106,10 @@ const MillionaireGame = () => {
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
 
-        if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal')) {
-          handleRevealPhase();
+        if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal') && !processingResults) {
+          setProcessingResults(true);
+          // Espera 2 segundos para garantir que todas as respostas foram salvas no Supabase
+          setTimeout(() => handleRevealPhase(), 2000);
         }
       };
 
@@ -111,10 +117,11 @@ const MillionaireGame = () => {
       timerRef.current = setInterval(updateTimer, 1000);
     } else {
       if (timerRef.current) clearInterval(timerRef.current);
+      setProcessingResults(false);
     }
 
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId]);
+  }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId, processingResults]);
 
   const handleRevealPhase = async () => {
     if (room.host_id !== currentUserId) return;
@@ -122,6 +129,7 @@ const MillionaireGame = () => {
     const currentPhase = room.phase;
     const isSpecial = currentPhase.startsWith('special_');
 
+    // Busca as respostas mais recentes do banco
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
@@ -129,7 +137,15 @@ const MillionaireGame = () => {
       .eq('question_index', room.current_question_index)
       .eq('phase', currentPhase);
 
-    for (const player of players) {
+    // Busca os jogadores atuais para garantir dados frescos
+    const { data: currentPlayersData } = await supabase
+      .from('millionaire_players')
+      .select('*')
+      .eq('room_id', roomId);
+
+    if (!currentPlayersData) return;
+
+    for (const player of currentPlayersData) {
       if (player.is_eliminated) continue;
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
@@ -139,14 +155,18 @@ const MillionaireGame = () => {
       let eliminated = false;
 
       if (currentPhase === 'special_professor') {
-        if (isCorrect) newValue += 10000;
-        else {
+        if (isCorrect) {
+          newValue += 10000;
+        } else {
           newValue = Math.max(0, newValue - 3000);
           eliminated = true;
         }
       } else if (currentPhase === 'special_surprise') {
-        if (isCorrect) newValue += 40000;
-        else newValue = Math.max(0, newValue - 10000);
+        if (isCorrect) {
+          newValue += 40000;
+        } else {
+          newValue = Math.max(0, newValue - 10000);
+        }
       } else if (currentPhase === 'question') {
         if (isCorrect) {
           newValue += PRIZES[room.current_question_index];
@@ -169,16 +189,17 @@ const MillionaireGame = () => {
       }).eq('id', player.id);
     }
 
+    // Lógica especial da Surpresa: Elimina o último do ranking
     if (currentPhase === 'special_surprise') {
-      const { data: currentPlayers } = await supabase
+      const { data: activePlayersAfterUpdate } = await supabase
         .from('millionaire_players')
         .select('*')
         .eq('room_id', roomId)
         .eq('is_eliminated', false)
         .order('current_value', { ascending: true });
       
-      if (currentPlayers && currentPlayers.length > 0) {
-        await supabase.from('millionaire_players').update({ is_eliminated: true }).eq('id', currentPlayers[0].id);
+      if (activePlayersAfterUpdate && activePlayersAfterUpdate.length > 1) {
+        await supabase.from('millionaire_players').update({ is_eliminated: true }).eq('id', activePlayersAfterUpdate[0].id);
       }
     }
 
@@ -186,6 +207,7 @@ const MillionaireGame = () => {
       phase: isSpecial ? `reveal_${currentPhase}` : 'reveal' 
     }).eq('id', roomId);
 
+    // Tempo para os jogadores verem o veredito antes da próxima questão
     setTimeout(async () => {
       const { data: activePlayers } = await supabase
         .from('millionaire_players')
@@ -228,7 +250,7 @@ const MillionaireGame = () => {
       }).eq('id', roomId);
 
       if (nextPhase === 'finished') confetti();
-    }, 5000);
+    }, 6000);
   };
 
   const use5050 = () => {
@@ -527,11 +549,22 @@ const MillionaireGame = () => {
           <div className="space-y-8">
             <Card className={cn(
               "rounded-[3rem] p-12 shadow-2xl relative overflow-hidden transition-all duration-1000",
-              room.phase === 'special_professor' ? "bg-red-950/90 border-red-500/50" :
+              room.phase === 'special_professor' ? "bg-red-950/90 border-red-500/50 animate-pulse" :
               room.phase === 'special_surprise' ? "bg-blue-950/90 border-blue-500/50" :
               room.phase === 'special_malice' ? "bg-purple-950/90 border-purple-500/50" :
               "bg-white/90 border-white/20"
             )}>
+              {room.phase === 'special_professor' && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 text-red-500 font-black text-[10px] uppercase tracking-[0.3em]">
+                  <ShieldAlert className="w-4 h-4" /> Eliminação Imediata em caso de Erro
+                </div>
+              )}
+              {room.phase === 'special_surprise' && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-[0.3em]">
+                  <Skull className="w-4 h-4" /> O último do ranking será eliminado
+                </div>
+              )}
+
               <div className="absolute top-8 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full border border-orange-500/30">
                 <Timer className="w-4 h-4 text-orange-600" />
                 <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
@@ -581,18 +614,56 @@ const MillionaireGame = () => {
           </div>
         ) : room.phase.startsWith('reveal') ? (
           <div className="space-y-8 animate-in zoom-in duration-500">
-            <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center">
-              <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>
-              <div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">
-                {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
-              </div>
-              <p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Resposta Correta Global */}
+              <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center flex flex-col justify-center">
+                <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>
+                <div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">
+                  {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
+                </div>
+                <p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p>
+              </Card>
+
+              {/* Veredito Individual */}
+              <Card className={cn(
+                "rounded-[3rem] p-12 shadow-2xl text-center flex flex-col items-center justify-center border-4",
+                myAnswer?.is_correct ? "bg-emerald-950/90 border-emerald-500" : "bg-red-950/90 border-red-500"
+              )}>
+                {myAnswer?.is_correct ? (
+                  <>
+                    <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-4 animate-bounce" />
+                    <h2 className="text-4xl font-black text-white mb-2">VOCÊ ACERTOU!</h2>
+                    <div className="flex items-center gap-2 text-emerald-400 font-black text-2xl">
+                      <TrendingUp className="w-6 h-6" /> + R$ {PRIZES[room.current_question_index].toLocaleString()}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-20 h-20 text-red-500 mb-4 animate-pulse" />
+                    <h2 className="text-4xl font-black text-white mb-2">VOCÊ ERROU!</h2>
+                    <div className="flex items-center gap-2 text-red-400 font-black text-2xl">
+                      <TrendingDown className="w-6 h-6" /> Penalidade Aplicada
+                    </div>
+                    {myPlayer.is_eliminated && (
+                      <Badge variant="destructive" className="mt-4 px-6 py-2 text-lg font-black rounded-full">ELIMINADO</Badge>
+                    )}
+                  </>
+                )}
+              </Card>
+            </div>
           </div>
         ) : room.phase === 'finished' ? (
           <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8 backdrop-blur-2xl">
             <Trophy className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" />
             <h2 className="text-6xl font-black text-white tracking-tighter">FIM DE JOGO</h2>
+            <div className="max-w-md mx-auto space-y-4">
+              {players.sort((a, b) => b.current_value - a.current_value).slice(0, 3).map((p, i) => (
+                <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <span className="font-black text-white">{i + 1}º {p.name}</span>
+                  <span className="text-yellow-500 font-black">R$ {p.current_value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
             <Button onClick={() => navigate('/modes')} className="h-16 px-12 rounded-2xl font-black text-lg bg-yellow-600">VOLTAR AO MENU</Button>
           </Card>
         ) : null}

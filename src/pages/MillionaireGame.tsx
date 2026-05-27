@@ -52,7 +52,6 @@ const MillionaireGame = () => {
   const currentQuestionId = room?.question_ids?.[room?.current_question_index];
   const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
   
-  // Verifica se já respondeu nesta rodada
   const myAnswer = answers.find(a => 
     a.player_id === myPlayer?.id && 
     a.question_index === room?.current_question_index
@@ -61,13 +60,14 @@ const MillionaireGame = () => {
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
       const updateTimer = () => {
+        if (!room) return;
         const startedAt = new Date(room.question_started_at).getTime();
         const now = Date.now();
         const elapsed = Math.floor((now - startedAt) / 1000);
         const remaining = Math.max(0, 20 - elapsed);
         setTimeLeft(remaining);
         
-        if (remaining === 0 && room.host_id === currentUserId) {
+        if (remaining === 0 && room?.host_id === currentUserId) {
           setTimeout(() => handleRevealPhase(), 1500);
         }
       };
@@ -77,10 +77,10 @@ const MillionaireGame = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [room?.phase, room?.question_started_at, room.host_id, currentUserId]);
+  }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId]);
 
   const handleRevealPhase = async () => {
-    if (room.host_id !== currentUserId) return;
+    if (!room || room.host_id !== currentUserId) return;
     
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
@@ -174,7 +174,6 @@ const MillionaireGame = () => {
   };
 
   const submitAnswer = async () => {
-    // Verificação simplificada para garantir que o botão funcione
     if (!selectedChoice || !myPlayer || myPlayer.is_eliminated) {
       if (!selectedChoice) showError("Selecione uma opção primeiro!");
       return;
@@ -194,7 +193,6 @@ const MillionaireGame = () => {
       
       if (error) throw error;
 
-      // Atualiza localmente para feedback imediato e desativar o botão
       setAnswers(prev => [...prev, {
         player_id: myPlayer.id,
         question_index: room.current_question_index,
@@ -204,14 +202,14 @@ const MillionaireGame = () => {
 
       showSuccess("Resposta confirmada!");
     } catch (error: any) { 
-      showError("Erro ao enviar: " + error.message); 
+      showError("Erro ao enviar resposta."); 
     } finally { 
       setSubmitting(false); 
     }
   };
 
   const startGame = async () => {
-    if (room.host_id !== currentUserId) return;
+    if (!room || room.host_id !== currentUserId) return;
     
     const easy = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'easy').sort(() => Math.random() - 0.5);
     const medium = MILLIONAIRE_QUESTIONS.filter(q => q.difficulty === 'medium').sort(() => Math.random() - 0.5);

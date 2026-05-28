@@ -32,6 +32,11 @@ const MillionairePresentation = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!roomId) {
+      navigate('/home');
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const { data: roomData, error: roomError } = await supabase
@@ -41,9 +46,7 @@ const MillionairePresentation = () => {
           .single();
         
         if (roomError || !roomData) {
-          showError("Arena não localizada.");
-          navigate('/home');
-          return;
+          throw new Error("Arena não localizada.");
         }
         setRoom(roomData);
 
@@ -53,8 +56,9 @@ const MillionairePresentation = () => {
           .eq('room_id', roomId);
         
         if (playersData) setPlayers(playersData);
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error("Erro ao carregar apresentação:", err);
+        showError(err.message || "Erro de conexão.");
         navigate('/home');
       } finally {
         setLoading(false);
@@ -63,9 +67,9 @@ const MillionairePresentation = () => {
 
     fetchData();
 
-    const channel = supabase.channel(`presentation_v2_${roomId}`)
+    const channel = supabase.channel(`presentation_v3_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
-        setRoom(payload.new);
+        if (payload.new) setRoom(payload.new);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
@@ -90,12 +94,14 @@ const MillionairePresentation = () => {
     return () => clearInterval(timer);
   }, [room?.phase, room?.question_started_at]);
 
-  if (loading || !room) return (
+  if (loading) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
       <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
       <p className="font-black uppercase tracking-widest text-[10px] text-slate-500">Sincronizando Transmissão...</p>
     </div>
   );
+
+  if (!room) return null;
 
   const currentQuestion = MILLIONAIRE_QUESTIONS[room.current_question_index] || MILLIONAIRE_QUESTIONS[0];
   const isSpecial = currentQuestion?.isSpecial;

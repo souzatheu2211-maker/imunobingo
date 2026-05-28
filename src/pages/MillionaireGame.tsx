@@ -100,7 +100,7 @@ const MillionaireGame = () => {
   const myAnswer = answers.find(a => 
     a.player_id === myPlayer?.id && 
     a.question_index === room?.current_question_index && 
-    a.phase === room?.phase
+    (a.phase === room?.phase || a.phase?.replace('reveal_', '') === room?.phase?.replace('reveal_', ''))
   );
 
   useEffect(() => {
@@ -114,6 +114,7 @@ const MillionaireGame = () => {
 
         if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal') && !processingResults) {
           setProcessingResults(true);
+          console.log("[HOST] Tempo esgotado. Iniciando processamento em 3s...");
           setTimeout(() => handleRevealPhase(), 3000);
         }
       };
@@ -134,16 +135,21 @@ const MillionaireGame = () => {
     const currentPhase = room.phase;
     const qIndex = room.current_question_index;
     const isSpecial = currentPhase.startsWith('special_');
-
-    // Identifica a questão correta para comparação no Host
     let roundQuestion: any = currentQuestion;
 
-    const { data: roundAnswers } = await supabase
+    console.log(`[HOST] --- PROCESSANDO RODADA ${qIndex} ---`);
+
+    // Busca TODAS as respostas da rodada atual para garantir que nada escape
+    const { data: roundAnswers, error: fetchError } = await supabase
       .from('millionaire_answers')
       .select('*')
       .eq('room_id', roomId)
-      .eq('question_index', qIndex)
-      .eq('phase', currentPhase);
+      .eq('question_index', qIndex);
+
+    if (fetchError) {
+      console.error("[HOST] Erro ao buscar respostas:", fetchError);
+      return;
+    }
 
     const { data: currentPlayersData } = await supabase
       .from('millionaire_players')
@@ -152,23 +158,18 @@ const MillionaireGame = () => {
 
     if (!currentPlayersData) return;
 
-    console.log(`[DEBUG] --- INICIANDO CORREÇÃO DA RODADA ${qIndex} ---`);
-    console.log(`[DEBUG] Fase: ${currentPhase}`);
-    console.log(`[DEBUG] Gabarito Oficial: ${roundQuestion.correct}`);
-
     for (const player of currentPlayersData) {
       if (player.is_eliminated) continue;
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
       
-      // PADRONIZAÇÃO OBRIGATÓRIA DE COMPARAÇÃO
+      // Comparação ultra-segura
       const pChoice = (playerAns?.answer || "").trim().toUpperCase();
       const cChoice = (roundQuestion.correct || "").trim().toUpperCase();
       const isCorrect = pChoice === cChoice && pChoice !== "";
 
-      console.log(`[DEBUG] Jogador: ${player.name} | Enviou: "${pChoice}" | Correto: "${cChoice}" | Resultado: ${isCorrect}`);
+      console.log(`[HOST] Jogador: ${player.name} | Resposta: ${pChoice} | Correto: ${cChoice} | Veredito: ${isCorrect}`);
 
-      // Atualiza o status da resposta no banco para que o frontend do jogador mostre o veredito certo
       if (playerAns) {
         await supabase.from('millionaire_answers').update({ is_correct: isCorrect }).eq('id', playerAns.id);
       }
@@ -254,56 +255,15 @@ const MillionaireGame = () => {
     }, 7000);
   };
 
-  const use5050 = () => {
-    if (helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer) return;
-    const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct && currentQuestion.options[key as keyof typeof currentQuestion.options]);
-    const toHide = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
-    setHiddenOptions(toHide);
-    setUsed5050(true);
-    setHelpUsedThisRound(true);
-    showSuccess("50/50 Ativado!");
-  };
-
-  const useDoubleChance = () => {
-    if (helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer) return;
-    setDoubleChanceActive(true);
-    setUsedDouble(true);
-    setHelpUsedThisRound(true);
-    showSuccess("Dupla Chance Ativada!");
-  };
-
-  const useTipHelp = () => {
-    if (helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer) return;
-    setShowTip(true);
-    setUsedTip(true);
-    setHelpUsedThisRound(true);
-    showSuccess("Dica Revelada!");
-  };
-
-  const handleChoiceClick = (key: string) => {
-    if (myPlayer?.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)) return;
-    if (room.phase === 'special_malice' && !isFirstPlace) return;
-
-    if (doubleChanceActive && key !== currentQuestion.correct && !firstWrongDone) {
-      setFirstWrongDone(true);
-      setHiddenOptions(prev => [...prev, key]);
-      showError("Primeira chance errada! Você ainda tem mais uma.");
-      return;
-    }
-
-    setSelectedChoice(key);
-  };
-
   const submitAnswer = async () => {
     if (!selectedChoice || myPlayer?.is_eliminated || !!myAnswer || submitting) return;
     setSubmitting(true);
 
-    // Padronização no envio
     const pChoice = selectedChoice.trim().toUpperCase();
     const cChoice = currentQuestion.correct.trim().toUpperCase();
     const isCorrect = pChoice === cChoice;
 
-    console.log(`[DEBUG] Enviando Resposta: "${pChoice}" | Correto: "${cChoice}" | Local: ${isCorrect}`);
+    console.log(`[PLAYER] Enviando: ${pChoice} | Correto: ${cChoice}`);
 
     try {
       if (room.phase === 'special_malice') {
@@ -311,21 +271,24 @@ const MillionaireGame = () => {
           setSelectedChoice('PICKING');
           setSubmitting(false);
         } else {
-          await supabase.from('millionaire_answers').insert({
+          const { error } = await supabase.from('millionaire_answers').insert({
             room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
             answer: 'B', is_correct: true, phase: room.phase
           });
+          if (error) throw error;
           showSuccess("Você escolheu a humildade!");
         }
       } else {
-        await supabase.from('millionaire_answers').insert({
+        const { error } = await supabase.from('millionaire_answers').insert({
           room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
           answer: pChoice, is_correct: isCorrect, phase: room.phase
         });
-        showSuccess("Resposta enviada com sucesso!");
+        if (error) throw error;
+        showSuccess("Resposta salva no laboratório!");
       }
-    } catch (error) {
-      showError("Erro ao enviar resposta. Tente novamente.");
+    } catch (error: any) {
+      console.error("[PLAYER] Erro ao salvar:", error);
+      showError("Falha na conexão: " + error.message);
       setSubmitting(false);
     }
   };
@@ -382,6 +345,7 @@ const MillionaireGame = () => {
       setLoading(false);
     };
     setup();
+    
     const channel = supabase.channel(`millionaire_game_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
@@ -399,8 +363,12 @@ const MillionaireGame = () => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
         else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
-        setAnswers(prev => [...prev, payload.new]);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setAnswers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setAnswers(prev => prev.map(a => a.id === payload.new.id ? payload.new : a));
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -450,7 +418,14 @@ const MillionaireGame = () => {
           <div className="p-4 grid grid-cols-3 gap-2">
             <Button 
               variant="outline" 
-              onClick={use5050}
+              onClick={() => { if (!helpUsedThisRound && !used5050 && !isSpecialPhase && !myAnswer) {
+                const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct && currentQuestion.options[key as keyof typeof currentQuestion.options]);
+                const toHide = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
+                setHiddenOptions(toHide);
+                setUsed5050(true);
+                setHelpUsedThisRound(true);
+                showSuccess("50/50 Ativado!");
+              }}}
               disabled={helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
@@ -462,7 +437,12 @@ const MillionaireGame = () => {
             </Button>
             <Button 
               variant="outline" 
-              onClick={useDoubleChance}
+              onClick={() => { if (!helpUsedThisRound && !usedDouble && !isSpecialPhase && !myAnswer) {
+                setDoubleChanceActive(true);
+                setUsedDouble(true);
+                setHelpUsedThisRound(true);
+                showSuccess("Dupla Chance Ativada!");
+              }}}
               disabled={helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",
@@ -474,7 +454,12 @@ const MillionaireGame = () => {
             </Button>
             <Button 
               variant="outline" 
-              onClick={useTipHelp}
+              onClick={() => { if (!helpUsedThisRound && !usedTip && !isSpecialPhase && !myAnswer) {
+                setShowTip(true);
+                setUsedTip(true);
+                setHelpUsedThisRound(true);
+                showSuccess("Dica Revelada!");
+              }}}
               disabled={helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
               className={cn(
                 "flex flex-col h-16 gap-1 border-white/10",

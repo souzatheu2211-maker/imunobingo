@@ -26,7 +26,9 @@ import {
   Wallet,
   Monitor,
   Crown,
-  User
+  User,
+  Skull,
+  Target
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -44,6 +46,10 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  // Maldade State
+  const [victimId, setVictimId] = useState<string | null>(null);
+  const [showVictimList, setShowVictimList] = useState(false);
+  
   // Ajudas
   const [used5050, setUsed5050] = useState(false);
   const [usedProb, setUsedProb] = useState(false);
@@ -57,6 +63,10 @@ const MillionaireGame = () => {
   
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index] || MILLIONAIRE_QUESTIONS[0];
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
+
+  // Ranking para identificar o Top 1
+  const sortedPlayers = [...players].sort((a, b) => b.current_value - a.current_value);
+  const isTop1 = myPlayer?.id === sortedPlayers[0]?.id;
 
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
@@ -90,35 +100,50 @@ const MillionaireGame = () => {
       .eq('room_id', roomId)
       .eq('question_index', room.current_question_index);
 
-    const sortedPlayers = [...players].sort((a, b) => a.current_value - b.current_value);
-    const lastPlayerId = sortedPlayers[0]?.id;
+    const q = MILLIONAIRE_QUESTIONS[room.current_question_index];
 
     for (const player of players) {
       if (player.is_eliminated) continue;
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
       const isCorrect = playerAns?.is_correct || false;
-      const q = MILLIONAIRE_QUESTIONS[room.current_question_index];
       
       let newValue = player.current_value;
       let eliminated = false;
 
-      if (isCorrect) {
-        if (q.id === 'bonus') newValue += 40000;
-        else newValue += (q.value || 0);
+      // Lógica Especial: Rodada da Maldade
+      if (q.id === 'maldade') {
+        if (playerAns?.answer?.startsWith('SIM_TO:')) {
+          const targetId = playerAns.answer.split(':')[1];
+          // O Top 1 é eliminado por ganância
+          eliminated = true;
+          // Os pontos do Top 1 vão para a vítima
+          const victim = players.find(p => p.id === targetId);
+          if (victim) {
+            await supabase.from('millionaire_players').update({
+              current_value: victim.current_value + player.current_value
+            }).eq('id', targetId);
+          }
+          newValue = 0;
+        } else if (playerAns?.answer === 'B') {
+          // Escolheu NÃO: Ganha o valor da pergunta e continua
+          newValue += (q.value || 0);
+        }
       } else {
-        if (q.id === 'bonus') newValue = Math.max(0, newValue - 10000);
-        else if (room.current_question_index <= 5) newValue = Math.max(0, newValue - 2000);
-        else if (room.current_question_index <= 14) newValue = Math.max(0, newValue - 10000);
-        else newValue = Math.max(0, newValue - 40000);
+        // Lógica Normal para outras perguntas
+        if (isCorrect) {
+          if (q.id === 'bonus') newValue += 40000;
+          else newValue += (q.value || 0);
+        } else {
+          if (q.id === 'bonus') newValue = Math.max(0, newValue - 10000);
+          else if (room.current_question_index <= 5) newValue = Math.max(0, newValue - 2000);
+          else if (room.current_question_index <= 14) newValue = Math.max(0, newValue - 10000);
+          else newValue = Math.max(0, newValue - 40000);
 
-        // Eliminação: Professor ou a partir da Q13 (index 15)
-        if (q.id === 'prof') eliminated = true;
-        else if (room.current_question_index >= 15) eliminated = true;
-        else if (q.id === 'maldade' && playerAns?.answer === 'A') eliminated = true;
+          if (q.id === 'prof') eliminated = true;
+          else if (room.current_question_index >= 15) eliminated = true;
+        }
       }
-
-      if (q.id === 'bonus' && player.id === lastPlayerId) eliminated = true;
 
       await supabase.from('millionaire_players').update({
         current_value: newValue,
@@ -151,14 +176,30 @@ const MillionaireGame = () => {
     }, 8000);
   };
 
+  const submitAnswer = async (choice: string) => {
+    if (submitting || !!myAnswer) return;
+    setSubmitting(true);
+    
+    const isCorrect = choice === currentQuestion.correct;
+    
+    await supabase.from('millionaire_answers').insert({
+      room_id: roomId,
+      player_id: myPlayer?.id,
+      question_index: room.current_question_index,
+      answer: choice,
+      is_correct: isCorrect
+    });
+    
+    setSubmitting(false);
+    showSuccess("Resposta registrada!");
+  };
+
   const useAid = (type: '5050' | 'prob') => {
     if (aidUsedThisTurn || currentQuestion.isSpecial || myPlayer?.is_eliminated || room?.phase !== 'question') {
       showError("Ajudas bloqueadas nesta rodada.");
       return;
     }
-
     setAidUsedThisTurn(true);
-
     if (type === '5050') {
       setUsed5050(true);
       const incorrect = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct);
@@ -170,12 +211,9 @@ const MillionaireGame = () => {
       const probs: Record<string, number> = {};
       const keys = ['A', 'B', 'C', 'D'];
       let remaining = 100;
-      
-      // Dá vantagem à correta
-      const correctProb = Math.floor(Math.random() * 20) + 50; // 50-70%
+      const correctProb = Math.floor(Math.random() * 20) + 50;
       probs[currentQuestion.correct] = correctProb;
       remaining -= correctProb;
-
       const others = keys.filter(k => k !== currentQuestion.correct);
       others.forEach((k, i) => {
         if (i === others.length - 1) probs[k] = remaining;
@@ -195,27 +233,23 @@ const MillionaireGame = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return navigate('/login');
       setCurrentUserId(user.id);
-
       const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
-
       const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
       setPlayers(playersData || []);
-
       const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
       setAnswers(answersData || []);
-
       setLoading(false);
     };
-
     setup();
-
-    const channel = supabase.channel(`millionaire_realtime_${roomId}`)
+    const channel = supabase.channel(`millionaire_game_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
         if (payload.new.phase === 'question') {
           setSelectedChoice(null);
+          setVictimId(null);
+          setShowVictimList(false);
           setHiddenOptions([]);
           setProbabilities({});
           setAidUsedThisTurn(false);
@@ -224,13 +258,11 @@ const MillionaireGame = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
         else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
-        else if (payload.eventType === 'DELETE') setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
         setAnswers(prev => [...prev, payload.new]);
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [roomId, navigate]);
 
@@ -285,7 +317,6 @@ const MillionaireGame = () => {
             </div>
           </div>
 
-          {/* MOSTRADOR DE PONTUAÇÃO DO JOGADOR */}
           <div className="flex items-center gap-4">
             <div className="bg-yellow-600/20 px-5 py-2 rounded-2xl border border-yellow-500/30 flex items-center gap-3 shadow-lg shadow-yellow-900/10">
               <Wallet className="w-4 h-4 text-yellow-500" />
@@ -294,18 +325,6 @@ const MillionaireGame = () => {
                 <span className="text-sm font-black text-white leading-none">R$ {myPlayer.current_value.toLocaleString()}</span>
               </div>
             </div>
-
-            {room.host_id === currentUserId && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 h-10 px-4 rounded-xl font-black text-[10px]"
-                onClick={() => window.open(`/millionaire/${roomId}/presentation`, '_blank')}
-              >
-                <Monitor className="w-4 h-4 mr-1.5" /> ABRIR PAINEL
-              </Button>
-            )}
-
             {myPlayer.is_eliminated && <Badge className="bg-red-600/20 text-red-500 border-red-500/30 px-3 py-1 animate-pulse">ELIMINADO</Badge>}
             <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/millionaire')}>
               <LogOut className="w-4 h-4 mr-2" /> SAIR
@@ -315,82 +334,139 @@ const MillionaireGame = () => {
 
         {room.phase === 'question' ? (
           <div className="space-y-8">
-            {/* Ajudas */}
-            {!myPlayer.is_eliminated && !currentQuestion.isSpecial && (
-              <div className="flex justify-center gap-4">
-                <Button onClick={() => useAid('5050')} disabled={used5050 || aidUsedThisTurn || !!myAnswer} className={cn("h-14 px-6 rounded-2xl font-black", used5050 ? "bg-slate-800" : "bg-violet-600")}>
-                  <Split className="w-5 h-5 mr-2" /> 50/50
-                </Button>
-                <Button onClick={() => useAid('prob')} disabled={usedProb || aidUsedThisTurn || !!myAnswer} className={cn("h-14 px-6 rounded-2xl font-black", usedProb ? "bg-slate-800" : "bg-blue-600")}>
-                  <BarChart3 className="w-5 h-5 mr-2" /> PROBABILIDADES
-                </Button>
-              </div>
-            )}
+            {/* Lógica da Rodada da Maldade */}
+            {currentQuestion.id === 'maldade' ? (
+              <div className="space-y-8">
+                <div className="flex justify-center">
+                  <Badge className="bg-red-600 text-white px-8 py-3 text-xl font-black rounded-full shadow-2xl animate-pulse">
+                    RODADA DA MALDADE: APENAS O LÍDER DECIDE
+                  </Badge>
+                </div>
 
-            {/* UI Dinâmica para Rodadas Especiais */}
-            {currentQuestion.isSpecial && (
-              <div className="flex justify-center animate-bounce">
-                <Badge className={cn(
-                  "px-6 py-2 text-lg font-black rounded-full shadow-2xl",
-                  currentQuestion.id === 'prof' ? "bg-red-600 text-white" : 
-                  currentQuestion.id === 'bonus' ? "bg-emerald-600 text-white" : "bg-violet-600 text-white"
-                )}>
-                  {currentQuestion.id === 'prof' && "⚠️ RODADA DO PROFESSOR: ERRO = ELIMINAÇÃO"}
-                  {currentQuestion.id === 'bonus' && "🎁 RODADA SURPRESA: ÚLTIMO ELIMINADO"}
-                  {currentQuestion.id === 'maldade' && "😈 RODADA DA GANÂNCIA"}
-                </Badge>
-              </div>
-            )}
-
-            <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full">
-                <Timer className="w-4 h-4 text-orange-600" />
-                <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight">
-                {currentQuestion.question}
-              </h2>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(currentQuestion.options).map(([key, val]) => (
-                <Button
-                  key={key}
-                  disabled={myPlayer.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)}
-                  onClick={() => setSelectedChoice(key)}
-                  className={cn(
-                    "h-24 rounded-3xl font-black text-xl transition-all border-2 text-left justify-between px-8",
-                    selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
-                    hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" :
-                    "bg-white/5 border-white/10 text-white hover:bg-white/10"
-                  )}
-                >
-                  <div className="flex items-center">
-                    <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>
-                    {val}
+                <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full">
+                    <Timer className="w-4 h-4 text-orange-600" />
+                    <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
                   </div>
-                  {probabilities[key] && (
-                    <span className="text-xs font-black text-blue-400 bg-blue-400/10 px-2 py-1 rounded-lg">
-                      {probabilities[key]}%
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
+                  <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight">
+                    {currentQuestion.question}
+                  </h2>
+                </Card>
 
-            {!myAnswer && !myPlayer.is_eliminated && (
-              <div className="flex justify-center">
-                <Button onClick={async () => {
-                  if (!selectedChoice) return;
-                  setSubmitting(true);
-                  await supabase.from('millionaire_answers').insert({
-                    room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
-                    answer: selectedChoice, is_correct: selectedChoice === currentQuestion.correct
-                  });
-                  setSubmitting(false);
-                }} disabled={!selectedChoice || submitting} className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg">
-                  CONFIRMAR RESPOSTA
-                </Button>
+                {isTop1 ? (
+                  <div className="space-y-6">
+                    {!showVictimList ? (
+                      <div className="grid grid-cols-2 gap-6">
+                        <Button 
+                          onClick={() => setShowVictimList(true)}
+                          className="h-24 bg-red-600 hover:bg-red-500 text-white font-black text-2xl rounded-3xl shadow-xl shadow-red-900/20"
+                        >
+                          SIM, QUERO ELIMINAR
+                        </Button>
+                        <Button 
+                          onClick={() => submitAnswer('B')}
+                          className="h-24 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-2xl rounded-3xl shadow-xl shadow-emerald-900/20"
+                        >
+                          NÃO, SOU PIEDOSO
+                        </Button>
+                      </div>
+                    ) : (
+                      <Card className="bg-slate-900/80 border-white/10 rounded-[2.5rem] p-8 space-y-6">
+                        <h3 className="text-white text-xl font-black text-center flex items-center justify-center gap-2">
+                          <Skull className="text-red-500" /> ESCOLHA SUA VÍTIMA
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {players.filter(p => p.id !== myPlayer.id && !p.is_eliminated).map(p => (
+                            <Button
+                              key={p.id}
+                              onClick={() => setVictimId(p.id)}
+                              className={cn(
+                                "h-16 rounded-2xl font-black transition-all border-2",
+                                victimId === p.id ? "bg-red-600 border-red-400 text-white" : "bg-white/5 border-white/10 text-white"
+                              )}
+                            >
+                              {p.name} (R$ {p.current_value.toLocaleString()})
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex gap-4">
+                          <Button variant="ghost" onClick={() => setShowVictimList(false)} className="flex-1 text-slate-500">VOLTAR</Button>
+                          <Button 
+                            disabled={!victimId || submitting}
+                            onClick={() => submitAnswer(`SIM_TO:${victimId}`)}
+                            className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black h-14 rounded-xl"
+                          >
+                            CONFIRMAR ELIMINAÇÃO
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center p-12 bg-white/5 rounded-[3rem] border border-white/10 space-y-4">
+                    <Loader2 className="w-12 h-12 text-violet-500 animate-spin mx-auto" />
+                    <p className="text-xl font-black text-white uppercase tracking-widest">Aguardando decisão do Líder...</p>
+                    <p className="text-slate-500 font-medium">O Top 1 ({sortedPlayers[0]?.name}) está decidindo o destino de alguém.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Lógica Normal para outras perguntas
+              <div className="space-y-8">
+                {!myPlayer.is_eliminated && !currentQuestion.isSpecial && (
+                  <div className="flex justify-center gap-4">
+                    <Button onClick={() => useAid('5050')} disabled={used5050 || aidUsedThisTurn || !!myAnswer} className={cn("h-14 px-6 rounded-2xl font-black", used5050 ? "bg-slate-800" : "bg-violet-600")}>
+                      <Split className="w-5 h-5 mr-2" /> 50/50
+                    </Button>
+                    <Button onClick={() => useAid('prob')} disabled={usedProb || aidUsedThisTurn || !!myAnswer} className={cn("h-14 px-6 rounded-2xl font-black", usedProb ? "bg-slate-800" : "bg-blue-600")}>
+                      <BarChart3 className="w-5 h-5 mr-2" /> PROBABILIDADES
+                    </Button>
+                  </div>
+                )}
+
+                <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
+                  <div className="absolute top-4 right-8 flex items-center gap-2 bg-orange-600/20 px-4 py-1.5 rounded-full">
+                    <Timer className="w-4 h-4 text-orange-600" />
+                    <span className="text-orange-600 font-black text-lg">{timeLeft}s</span>
+                  </div>
+                  <h2 className="text-3xl md:text-5xl font-black text-slate-950 text-center leading-tight">
+                    {currentQuestion.question}
+                  </h2>
+                </Card>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(currentQuestion.options).map(([key, val]) => (
+                    <Button
+                      key={key}
+                      disabled={myPlayer.is_eliminated || !!myAnswer || submitting || hiddenOptions.includes(key)}
+                      onClick={() => setSelectedChoice(key)}
+                      className={cn(
+                        "h-24 rounded-3xl font-black text-xl transition-all border-2 text-left justify-between px-8",
+                        selectedChoice === key ? "bg-blue-600 border-blue-400 text-white" :
+                        hiddenOptions.includes(key) ? "opacity-0 pointer-events-none" :
+                        "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                      )}
+                    >
+                      <div className="flex items-center">
+                        <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mr-4 text-sm">{key}</span>
+                        {val}
+                      </div>
+                      {probabilities[key] && (
+                        <span className="text-xs font-black text-blue-400 bg-blue-400/10 px-2 py-1 rounded-lg">
+                          {probabilities[key]}%
+                        </span>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+
+                {!myAnswer && !myPlayer.is_eliminated && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => submitAnswer(selectedChoice!)} disabled={!selectedChoice || submitting} className="h-16 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-lg">
+                      CONFIRMAR RESPOSTA
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -398,14 +474,17 @@ const MillionaireGame = () => {
           <div className="space-y-6 animate-in zoom-in duration-500">
             <Card className={cn(
               "border-none rounded-[3rem] p-10 shadow-2xl text-center relative overflow-hidden",
-              myAnswer?.is_correct ? "bg-emerald-500 text-white" : "bg-red-600 text-white"
+              myAnswer?.is_correct || (currentQuestion.id === 'maldade' && myAnswer?.answer === 'B') ? "bg-emerald-500 text-white" : "bg-red-600 text-white"
             )}>
               <div className="flex flex-col items-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-                  {myAnswer?.is_correct ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12" />}
+                  {myAnswer?.is_correct || (currentQuestion.id === 'maldade' && myAnswer?.answer === 'B') ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12" />}
                 </div>
                 <h2 className="text-5xl font-black tracking-tighter uppercase">
-                  {myAnswer?.is_correct ? "VOCÊ ACERTOU!" : "VOCÊ ERROU!"}
+                  {currentQuestion.id === 'maldade' 
+                    ? (myAnswer?.answer?.startsWith('SIM') ? "GANÂNCIA CONSUMIDA!" : "PIEDADE RECOMPENSADA!")
+                    : (myAnswer?.is_correct ? "VOCÊ ACERTOU!" : "VOCÊ ERROU!")
+                  }
                 </h2>
                 <div className="flex items-center gap-3 bg-black/20 px-8 py-4 rounded-2xl border border-white/10">
                   {getDelta() >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-300" /> : <TrendingDown className="w-6 h-6 text-red-300" />}
@@ -419,9 +498,12 @@ const MillionaireGame = () => {
             <Card className="bg-white/90 border-white/20 rounded-[3rem] p-10 shadow-2xl">
               <div className="space-y-6">
                 <div className="text-center">
-                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Resposta Correta</p>
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Resultado da Rodada</p>
                   <div className="inline-block bg-slate-950 text-yellow-500 px-8 py-4 rounded-2xl text-2xl font-black border-2 border-yellow-500/30">
-                    {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
+                    {currentQuestion.id === 'maldade' 
+                      ? "A GANÂNCIA É O VÍRUS DA ALMA" 
+                      : `${currentQuestion.correct}: ${currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}`
+                    }
                   </div>
                 </div>
                 {currentQuestion.explanation && (
@@ -459,37 +541,6 @@ const MillionaireGame = () => {
                 <h2 className="text-4xl font-black text-white tracking-tighter">LOBBY DE ESPERA</h2>
                 <p className="text-slate-400 font-medium">Aguardando o host iniciar o desafio...</p>
               </div>
-
-              <div className="max-w-2xl mx-auto space-y-4">
-                <div className="flex items-center justify-between px-4">
-                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2">
-                    <Users className="w-3 h-3" /> Jogadores Conectados ({players.length})
-                  </h3>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {players.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 animate-in slide-in-from-bottom-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-white/5">
-                          <User className="w-5 h-5 text-slate-400" />
-                        </div>
-                        <div className="text-left">
-                          <p className="font-black text-white text-sm flex items-center gap-1">
-                            {p.name}
-                            {room.host_id === p.user_id && <Crown className="w-3 h-3 text-yellow-500" />}
-                          </p>
-                          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Online</p>
-                        </div>
-                      </div>
-                      {room.host_id === p.user_id && (
-                        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[8px] font-black">HOST</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {room.host_id === currentUserId && (
                 <div className="pt-8">
                   <Button 

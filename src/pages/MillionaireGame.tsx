@@ -139,7 +139,6 @@ const MillionaireGame = () => {
 
     console.log(`[HOST] --- PROCESSANDO RODADA ${qIndex} ---`);
 
-    // Busca TODAS as respostas da rodada atual para garantir que nada escape
     const { data: roundAnswers, error: fetchError } = await supabase
       .from('millionaire_answers')
       .select('*')
@@ -163,7 +162,6 @@ const MillionaireGame = () => {
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
       
-      // Comparação ultra-segura
       const pChoice = (playerAns?.answer || "").trim().toUpperCase();
       const cChoice = (roundQuestion.correct || "").trim().toUpperCase();
       const isCorrect = pChoice === cChoice && pChoice !== "";
@@ -253,6 +251,28 @@ const MillionaireGame = () => {
 
       if (nextPhase === 'finished') confetti();
     }, 7000);
+  };
+
+  const handleChoiceClick = (key: string) => {
+    if (myPlayer.is_eliminated || !!myAnswer || submitting) return;
+    
+    if (doubleChanceActive) {
+      if (key === currentQuestion.correct) {
+        setSelectedChoice(key);
+        showSuccess("Acerto na mosca!");
+      } else {
+        if (!firstWrongDone) {
+          setFirstWrongDone(true);
+          setHiddenOptions(prev => [...prev, key]);
+          showError("Primeira chance falhou! Tente novamente.");
+          return;
+        } else {
+          setSelectedChoice(key);
+        }
+      }
+    } else {
+      setSelectedChoice(key);
+    }
   };
 
   const submitAnswer = async () => {
@@ -619,7 +639,6 @@ const MillionaireGame = () => {
         ) : room.phase.startsWith('reveal') ? (
           <div className="space-y-8 animate-in zoom-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Resposta Correta Global */}
               <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center flex flex-col justify-center">
                 <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>
                 <div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">
@@ -628,7 +647,6 @@ const MillionaireGame = () => {
                 <p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p>
               </Card>
 
-              {/* Veredito Individual */}
               <Card className={cn(
                 "rounded-[3rem] p-12 shadow-2xl text-center flex flex-col items-center justify-center border-4",
                 myAnswer?.is_correct ? "bg-emerald-950/90 border-emerald-500" : "bg-red-950/90 border-red-500"

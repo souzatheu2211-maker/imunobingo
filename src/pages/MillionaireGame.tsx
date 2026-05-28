@@ -164,7 +164,12 @@ const MillionaireGame = () => {
 
       const nextIndex = room.current_question_index + 1;
       
-      if (!activePlayers || activePlayers.length === 0 || nextIndex >= MILLIONAIRE_QUESTIONS.length) {
+      // Condição de encerramento: Sem jogadores, apenas 1 jogador (em multiplayer) ou fim das perguntas
+      const noPlayersLeft = !activePlayers || activePlayers.length === 0;
+      const onlyOneSurvivor = players.length > 1 && activePlayers?.length === 1;
+      const reachedEnd = nextIndex >= MILLIONAIRE_QUESTIONS.length;
+
+      if (noPlayersLeft || onlyOneSurvivor || reachedEnd) {
         await supabase.from('millionaire_rooms').update({ phase: 'finished', status: 'finished' }).eq('id', roomId);
         confetti();
       } else {

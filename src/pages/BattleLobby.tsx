@@ -24,13 +24,13 @@ const BattleLobby = () => {
 
   const createBattle = async () => {
     setLoading(true);
-    // Padronizado para IMUNO-XXXX
     const code = 'IMUNO-' + Math.floor(1000 + Math.random() * 9000);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Faça login primeiro.");
 
+      // 1. Criar a sala
       const { data: room, error: roomError } = await supabase
         .from('battle_rooms')
         .insert({ 
@@ -46,7 +46,8 @@ const BattleLobby = () => {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
       const stats = classes.find(c => c.name === selectedClass);
 
-      await supabase.from('battle_players').insert({
+      // 2. Inserir o host como jogador e aguardar
+      const { error: playerError } = await supabase.from('battle_players').insert({
         battle_room_id: room.id,
         user_id: user.id,
         name: profile?.full_name || 'Guerreiro',
@@ -56,10 +57,12 @@ const BattleLobby = () => {
         attack: stats?.atk
       });
 
+      if (playerError) throw playerError;
+
       showSuccess("Arena criada! Código: " + code);
       navigate(`/battle/${room.id}`);
     } catch (error: any) {
-      showError(error.message);
+      showError("Erro ao criar arena: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -84,7 +87,7 @@ const BattleLobby = () => {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
       const stats = classes.find(c => c.name === selectedClass);
 
-      await supabase.from('battle_players').insert({
+      const { error: joinError } = await supabase.from('battle_players').insert({
         battle_room_id: room.id,
         user_id: user.id,
         name: profile?.full_name || 'Guerreiro',
@@ -94,10 +97,12 @@ const BattleLobby = () => {
         attack: stats?.atk
       });
 
+      if (joinError) throw joinError;
+
       showSuccess("Entrou na arena!");
       navigate(`/battle/${room.id}`);
     } catch (error: any) {
-      showError(error.message);
+      showError("Erro ao entrar: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -150,7 +155,7 @@ const BattleLobby = () => {
               disabled={loading}
               className="w-full h-16 bg-blue-600 hover:bg-blue-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-900/20 transition-all active:scale-95"
             >
-              <PlusCircle className="mr-2 h-6 w-6" /> CRIAR NOVA ARENA
+              <PlusCircle className="mr-2 h-6 w-6" /> {loading ? "CRIANDO..." : "CRIAR NOVA ARENA"}
             </Button>
 
             <div className="relative py-4">

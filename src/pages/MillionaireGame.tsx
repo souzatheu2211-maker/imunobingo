@@ -369,6 +369,7 @@ const MillionaireGame = () => {
 
   const isFirstPlace = players.sort((a, b) => b.current_value - a.current_value)[0]?.id === myPlayer.id;
   const myAnswer = answers.find(a => a.player_id === myPlayer.id && a.question_index === room.current_question_index && a.phase === room.phase);
+  const isSpecialPhase = room?.phase?.startsWith('special_');
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">

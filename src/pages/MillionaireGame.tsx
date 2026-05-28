@@ -58,7 +58,6 @@ const MillionaireGame = () => {
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index] || MILLIONAIRE_QUESTIONS[0];
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
 
-  // Lógica para redirecionar ao lobby se a página for atualizada
   useEffect(() => {
     const navigationEntries = performance.getEntriesByType("navigation");
     if (navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload') {
@@ -126,7 +125,7 @@ const MillionaireGame = () => {
         current_value: newValue,
         is_eliminated: eliminated,
         last_answered_index: room.current_question_index
-      }).eq('id', player.id);<dyad-write path="src/pages/MillionaireGame.tsx" description="Continuando a implementação do MillionaireGame com fotos e lógica de refresh.">
+      }).eq('id', player.id);
     }
 
     await supabase.from('millionaire_rooms').update({ phase: 'reveal' }).eq('id', roomId);
@@ -201,7 +200,6 @@ const MillionaireGame = () => {
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
 
-      // Buscando jogadores com avatar_url do perfil
       const { data: playersData } = await supabase
         .from('millionaire_players')
         .select('*, profiles(avatar_url)')

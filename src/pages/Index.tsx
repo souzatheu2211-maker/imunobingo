@@ -37,7 +37,6 @@ const Index = () => {
     const code = generateCode();
     
     try {
-      // 1. Criar a sala
       const { data: room, error: roomError } = await supabase
         .from('rooms')
         .insert({ code, status: 'waiting' })
@@ -46,7 +45,6 @@ const Index = () => {
 
       if (roomError) throw roomError;
 
-      // 2. Criar o jogador
       const { data: player, error: playerError } = await supabase
         .from('players')
         .insert({ room_id: room.id, name, points: 0 })
@@ -55,10 +53,8 @@ const Index = () => {
 
       if (playerError) throw playerError;
 
-      // 3. Atualizar o host da sala
       await supabase.from('rooms').update({ host_id: player.id }).eq('id', room.id);
 
-      // 4. Salvar dados locais ANTES de navegar
       localStorage.setItem('imuno_player_id', player.id);
       localStorage.setItem('imuno_player_name', name);
       
@@ -102,7 +98,7 @@ const Index = () => {
       showSuccess("Entrou na sala!");
       navigate(`/room/${room.id}`);
     } catch (error: any) {
-      showError("Erro ao entrar: " + error.message);
+      showError(error.message);
     } finally {
       setLoading(false);
     }
@@ -149,7 +145,7 @@ const Index = () => {
                 className="h-16 bg-violet-600 hover:bg-violet-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-violet-900/20 transition-all active:scale-95"
               >
                 <PlusCircle className="mr-2 h-6 w-6" />
-                {loading ? "CRIANDO..." : "CRIAR NOVA SALA"}
+                CRIAR NOVA SALA
               </Button>
 
               <div className="relative py-4">

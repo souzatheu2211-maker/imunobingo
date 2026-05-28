@@ -20,7 +20,6 @@ const MillionaireLobby = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Faça login primeiro.");
 
-      // 1. Criar a sala
       const { data: room, error: roomError } = await supabase
         .from('millionaire_rooms')
         .insert({ 
@@ -38,8 +37,7 @@ const MillionaireLobby = () => {
 
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
 
-      // 2. Inserir o host como jogador e aguardar a conclusão
-      const { error: playerError } = await supabase.from('millionaire_players').insert({
+      await supabase.from('millionaire_players').insert({
         room_id: room.id,
         user_id: user.id,
         name: profile?.full_name || 'Candidato',
@@ -47,12 +45,10 @@ const MillionaireLobby = () => {
         is_eliminated: false
       });
 
-      if (playerError) throw playerError;
-
       showSuccess("Sala criada! Código: " + code);
       navigate(`/millionaire/${room.id}`);
     } catch (error: any) {
-      showError("Erro ao criar sala: " + error.message);
+      showError(error.message);
     } finally {
       setLoading(false);
     }
@@ -84,20 +80,19 @@ const MillionaireLobby = () => {
         .single();
 
       if (!existing) {
-        const { error: joinError } = await supabase.from('millionaire_players').insert({
+        await supabase.from('millionaire_players').insert({
           room_id: room.id,
           user_id: user.id,
           name: profile?.full_name || 'Candidato',
           current_value: 0,
           is_eliminated: false
         });
-        if (joinError) throw joinError;
       }
 
       showSuccess("Entrou na sala!");
       navigate(`/millionaire/${room.id}`);
     } catch (error: any) {
-      showError("Erro ao entrar: " + error.message);
+      showError(error.message);
     } finally {
       setLoading(false);
     }
@@ -122,7 +117,7 @@ const MillionaireLobby = () => {
             disabled={loading}
             className="w-full h-16 bg-yellow-600 hover:bg-yellow-500 text-white font-black text-lg rounded-2xl shadow-xl shadow-yellow-900/20 transition-all active:scale-95"
           >
-            <PlusCircle className="mr-2 h-6 w-6" /> {loading ? "CRIANDO..." : "CRIAR NOVA SALA"}
+            <PlusCircle className="mr-2 h-6 w-6" /> CRIAR NOVA SALA
           </Button>
         </Card>
 
@@ -140,7 +135,7 @@ const MillionaireLobby = () => {
               disabled={loading}
               className="w-full h-14 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl"
             >
-              <LogIn className="mr-2 h-6 w-6" /> {loading ? "ENTRANDO..." : "ENTRAR NA SALA"}
+              <LogIn className="mr-2 h-6 w-6" /> ENTRAR NA SALA
             </Button>
           </div>
         </Card>

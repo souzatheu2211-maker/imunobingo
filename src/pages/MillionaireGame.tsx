@@ -24,7 +24,9 @@ import {
   AlertTriangle,
   Ghost,
   Wallet,
-  Monitor
+  Monitor,
+  Crown,
+  User
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -222,6 +224,7 @@ const MillionaireGame = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
         else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        else if (payload.eventType === 'DELETE') setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
         setAnswers(prev => [...prev, payload.new]);
@@ -447,17 +450,62 @@ const MillionaireGame = () => {
             <Button onClick={() => navigate('/modes')} className="h-16 px-12 rounded-2xl font-black text-lg bg-white text-slate-950">VOLTAR AO MENU</Button>
           </Card>
         ) : (
-          <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8">
-            <Sparkles className="w-16 h-16 text-yellow-500 mx-auto animate-pulse" />
-            <h2 className="text-4xl font-black text-white">Aguardando Início...</h2>
-            {room.host_id === currentUserId && (
-              <Button onClick={async () => {
-                await supabase.from('millionaire_rooms').update({
-                  status: 'playing', phase: 'question', current_question_index: 0, question_started_at: new Date().toISOString()
-                }).eq('id', roomId);
-              }} className="bg-yellow-600 hover:bg-yellow-500 font-black px-16 h-20 rounded-3xl text-xl">INICIAR DESAFIO</Button>
-            )}
-          </Card>
+          <div className="space-y-8 animate-in fade-in duration-700">
+            <Card className="bg-white/5 border-white/10 rounded-[3rem] p-8 md:p-12 text-center space-y-8 backdrop-blur-xl">
+              <div className="space-y-4">
+                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                  <Sparkles className="w-10 h-10 text-yellow-500" />
+                </div>
+                <h2 className="text-4xl font-black text-white tracking-tighter">LOBBY DE ESPERA</h2>
+                <p className="text-slate-400 font-medium">Aguardando o host iniciar o desafio...</p>
+              </div>
+
+              <div className="max-w-2xl mx-auto space-y-4">
+                <div className="flex items-center justify-between px-4">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                    <Users className="w-3 h-3" /> Jogadores Conectados ({players.length})
+                  </h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {players.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 animate-in slide-in-from-bottom-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-white/5">
+                          <User className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-black text-white text-sm flex items-center gap-1">
+                            {p.name}
+                            {room.host_id === p.user_id && <Crown className="w-3 h-3 text-yellow-500" />}
+                          </p>
+                          <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Online</p>
+                        </div>
+                      </div>
+                      {room.host_id === p.user_id && (
+                        <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 text-[8px] font-black">HOST</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {room.host_id === currentUserId && (
+                <div className="pt-8">
+                  <Button 
+                    onClick={async () => {
+                      await supabase.from('millionaire_rooms').update({
+                        status: 'playing', phase: 'question', current_question_index: 0, question_started_at: new Date().toISOString()
+                      }).eq('id', roomId);
+                    }} 
+                    className="bg-yellow-600 hover:bg-yellow-500 font-black px-16 h-20 rounded-3xl text-xl shadow-2xl shadow-yellow-900/40 animate-bounce hover:animate-none transition-all active:scale-95"
+                  >
+                    INICIAR DESAFIO
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     </div>

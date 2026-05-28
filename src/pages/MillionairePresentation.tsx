@@ -1,27 +1,51 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS } from '@/data/millionaireQuestions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Timer, Users, Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { showError } from '@/utils/toast';
 
 const MillionairePresentation = () => {
   const { id: roomId } = useParams();
+  const navigate = useNavigate();
   const [room, setRoom] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [timeLeft, setTimeLeft] = useState(20);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
-      if (roomData) setRoom(roomData);
+      try {
+        const { data: roomData, error: roomError } = await supabase
+          .from('millionaire_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .single();
+        
+        if (roomError || !roomData) {
+          showError("Sala não encontrada. Retornando ao início...");
+          navigate('/home');
+          return;
+        }
+        setRoom(roomData);
 
-      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
-      if (playersData) setPlayers(playersData);
+        const { data: playersData } = await supabase
+          .from('millionaire_players')
+          .select('*')
+          .eq('room_id', roomId);
+        
+        if (playersData) setPlayers(playersData);
+      } catch (err) {
+        console.error(err);
+        navigate('/home');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -33,11 +57,12 @@ const MillionairePresentation = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
         if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
         else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        else if (payload.eventType === 'DELETE') setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [roomId]);
+  }, [roomId, navigate]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -52,16 +77,18 @@ const MillionairePresentation = () => {
     return () => clearInterval(timer);
   }, [room?.phase, room?.question_started_at]);
 
-  if (!room) return (
+  if (loading || !room) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-      <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
-      <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
+      <div className="relative">
+        <div className="absolute -inset-4 bg-yellow-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+        <Loader2 className="w-12 h-12 text-yellow-500 animate-spin relative" />
+      </div>
+      <p className="font-black uppercase tracking-widest text-[10px] animate-pulse text-slate-500">Sincronizando Arena...</p>
     </div>
   );
 
-  // Busca a pergunta baseada no ID salvo na sala
-  const currentQuestionId = room?.question_ids?.[room?.current_question_index];
-  const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
+  // Busca a pergunta baseada no índice atual da sala
+  const currentQuestion = MILLIONAIRE_QUESTIONS[room.current_question_index] || MILLIONAIRE_QUESTIONS[0];
 
   return (
     <div className="min-h-screen bg-slate-950 p-12 flex flex-col gap-12 overflow-hidden">

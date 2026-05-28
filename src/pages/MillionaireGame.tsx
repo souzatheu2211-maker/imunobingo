@@ -97,7 +97,6 @@ const MillionaireGame = () => {
   const currentQuestion = getActiveQuestion();
   const isSpecialPhase = room?.phase?.startsWith('special_');
   
-  // Busca a resposta do jogador para a fase e questão atual
   const myAnswer = answers.find(a => 
     a.player_id === myPlayer?.id && 
     a.question_index === room?.current_question_index && 
@@ -115,7 +114,6 @@ const MillionaireGame = () => {
 
         if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal') && !processingResults) {
           setProcessingResults(true);
-          // Buffer de 3 segundos para garantir que todas as respostas de rede lenta cheguem
           setTimeout(() => handleRevealPhase(), 3000);
         }
       };
@@ -134,14 +132,17 @@ const MillionaireGame = () => {
     if (room.host_id !== currentUserId) return;
 
     const currentPhase = room.phase;
+    const qIndex = room.current_question_index;
     const isSpecial = currentPhase.startsWith('special_');
 
-    // Busca as respostas e jogadores diretamente do banco para evitar dados obsoletos
+    // Identifica a questão correta para comparação no Host
+    let roundQuestion: any = currentQuestion;
+
     const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
       .eq('room_id', roomId)
-      .eq('question_index', room.current_question_index)
+      .eq('question_index', qIndex)
       .eq('phase', currentPhase);
 
     const { data: currentPlayersData } = await supabase
@@ -151,47 +152,49 @@ const MillionaireGame = () => {
 
     if (!currentPlayersData) return;
 
+    console.log(`[DEBUG] --- INICIANDO CORREÇÃO DA RODADA ${qIndex} ---`);
+    console.log(`[DEBUG] Fase: ${currentPhase}`);
+    console.log(`[DEBUG] Gabarito Oficial: ${roundQuestion.correct}`);
+
     for (const player of currentPlayersData) {
       if (player.is_eliminated) continue;
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
-      const isCorrect = playerAns?.is_correct || false;
+      
+      // PADRONIZAÇÃO OBRIGATÓRIA DE COMPARAÇÃO
+      const pChoice = (playerAns?.answer || "").trim().toUpperCase();
+      const cChoice = (roundQuestion.correct || "").trim().toUpperCase();
+      const isCorrect = pChoice === cChoice && pChoice !== "";
+
+      console.log(`[DEBUG] Jogador: ${player.name} | Enviou: "${pChoice}" | Correto: "${cChoice}" | Resultado: ${isCorrect}`);
+
+      // Atualiza o status da resposta no banco para que o frontend do jogador mostre o veredito certo
+      if (playerAns) {
+        await supabase.from('millionaire_answers').update({ is_correct: isCorrect }).eq('id', playerAns.id);
+      }
       
       let newValue = player.current_value;
       let eliminated = false;
 
       if (currentPhase === 'special_professor') {
-        if (isCorrect) {
-          newValue += 10000;
-        } else {
-          newValue = Math.max(0, newValue - 3000);
-          eliminated = true;
-        }
+        if (isCorrect) newValue += 10000;
+        else { newValue = Math.max(0, newValue - 3000); eliminated = true; }
       } else if (currentPhase === 'special_surprise') {
-        if (isCorrect) {
-          newValue += 40000;
-        } else {
-          newValue = Math.max(0, newValue - 10000);
-        }
+        if (isCorrect) newValue += 40000;
+        else newValue = Math.max(0, newValue - 10000);
       } else if (currentPhase === 'question') {
-        if (isCorrect) {
-          newValue += PRIZES[room.current_question_index];
-        } else {
-          if (room.current_question_index < 4) {
-            newValue = Math.max(0, newValue - 2000);
-          } else if (room.current_question_index < 9) {
-            newValue = Math.max(0, newValue - 10000);
-          } else {
-            newValue = Math.max(0, newValue - 20000);
-            eliminated = true;
-          }
+        if (isCorrect) newValue += PRIZES[qIndex];
+        else {
+          if (qIndex < 4) newValue = Math.max(0, newValue - 2000);
+          else if (qIndex < 9) newValue = Math.max(0, newValue - 10000);
+          else { newValue = Math.max(0, newValue - 20000); eliminated = true; }
         }
       }
 
       await supabase.from('millionaire_players').update({
         current_value: newValue,
         is_eliminated: eliminated,
-        last_answered_index: room.current_question_index
+        last_answered_index: qIndex
       }).eq('id', player.id);
     }
 
@@ -225,22 +228,16 @@ const MillionaireGame = () => {
       }
 
       let nextPhase = 'question';
-      let nextIndex = room.current_question_index;
+      let nextIndex = qIndex;
 
-      if (currentPhase === 'special_professor') {
-        nextIndex = 2;
-      } else if (currentPhase === 'special_surprise') {
-        nextIndex = 5;
-      } else if (currentPhase === 'special_malice') {
-        nextIndex = 9;
-      } else {
-        if (room.current_question_index === 1) {
-          nextPhase = 'special_professor';
-        } else if (room.current_question_index === 4) {
-          nextPhase = 'special_surprise';
-        } else if (room.current_question_index === 8) {
-          nextPhase = 'special_malice';
-        } else {
+      if (currentPhase === 'special_professor') nextIndex = 2;
+      else if (currentPhase === 'special_surprise') nextIndex = 5;
+      else if (currentPhase === 'special_malice') nextIndex = 9;
+      else {
+        if (qIndex === 1) nextPhase = 'special_professor';
+        else if (qIndex === 4) nextPhase = 'special_surprise';
+        else if (qIndex === 8) nextPhase = 'special_malice';
+        else {
           nextIndex++;
           if (nextIndex >= 15) nextPhase = 'finished';
         }
@@ -301,13 +298,18 @@ const MillionaireGame = () => {
     if (!selectedChoice || myPlayer?.is_eliminated || !!myAnswer || submitting) return;
     setSubmitting(true);
 
-    const isCorrect = selectedChoice === currentQuestion.correct;
+    // Padronização no envio
+    const pChoice = selectedChoice.trim().toUpperCase();
+    const cChoice = currentQuestion.correct.trim().toUpperCase();
+    const isCorrect = pChoice === cChoice;
+
+    console.log(`[DEBUG] Enviando Resposta: "${pChoice}" | Correto: "${cChoice}" | Local: ${isCorrect}`);
 
     try {
       if (room.phase === 'special_malice') {
         if (selectedChoice === 'A') {
           setSelectedChoice('PICKING');
-          setSubmitting(false); // Permite escolher a vítima
+          setSubmitting(false);
         } else {
           await supabase.from('millionaire_answers').insert({
             room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
@@ -318,7 +320,7 @@ const MillionaireGame = () => {
       } else {
         await supabase.from('millionaire_answers').insert({
           room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
-          answer: selectedChoice, is_correct: isCorrect, phase: room.phase
+          answer: pChoice, is_correct: isCorrect, phase: room.phase
         });
         showSuccess("Resposta enviada com sucesso!");
       }

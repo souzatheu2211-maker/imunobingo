@@ -23,7 +23,8 @@ import {
   TrendingDown,
   AlertTriangle,
   Ghost,
-  Wallet
+  Wallet,
+  Monitor
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -290,6 +291,17 @@ const MillionaireGame = () => {
                 <span className="text-sm font-black text-white leading-none">R$ {myPlayer.current_value.toLocaleString()}</span>
               </div>
             </div>
+
+            {room.host_id === currentUserId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 h-10 px-4 rounded-xl font-black text-[10px]"
+                onClick={() => window.open(`/millionaire/${roomId}/presentation`, '_blank')}
+              >
+                <Monitor className="w-4 h-4 mr-1.5" /> ABRIR PAINEL
+              </Button>
+            )}
 
             {myPlayer.is_eliminated && <Badge className="bg-red-600/20 text-red-500 border-red-500/30 px-3 py-1 animate-pulse">ELIMINADO</Badge>}
             <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/millionaire')}>

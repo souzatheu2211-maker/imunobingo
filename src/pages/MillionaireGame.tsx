@@ -319,6 +319,16 @@ const MillionaireGame = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {room.host_id === currentUserId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 h-10 px-4 rounded-xl font-bold"
+                onClick={() => window.open(`/millionaire/${roomId}/presentation`, '_blank')}
+              >
+                <Monitor className="w-4 h-4 mr-2" /> PAINEL TV
+              </Button>
+            )}
             <div className="bg-yellow-600/20 px-5 py-2 rounded-2xl border border-yellow-500/30 flex items-center gap-3 shadow-lg shadow-yellow-900/10">
               <Wallet className="w-4 h-4 text-yellow-500" />
               <div className="flex flex-col">

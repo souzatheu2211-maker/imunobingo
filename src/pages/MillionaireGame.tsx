@@ -28,7 +28,8 @@ import {
   Crown,
   User,
   Skull,
-  Target
+  Target,
+  AlertCircle
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -115,9 +116,7 @@ const MillionaireGame = () => {
       if (q.id === 'maldade') {
         if (playerAns?.answer?.startsWith('SIM_TO:')) {
           const targetId = playerAns.answer.split(':')[1];
-          // O Top 1 é eliminado por ganância
           eliminated = true;
-          // Os pontos do Top 1 vão para a vítima
           const victim = players.find(p => p.id === targetId);
           if (victim) {
             await supabase.from('millionaire_players').update({
@@ -126,22 +125,24 @@ const MillionaireGame = () => {
           }
           newValue = 0;
         } else if (playerAns?.answer === 'B') {
-          // Escolheu NÃO: Ganha o valor da pergunta e continua
           newValue += (q.value || 0);
         }
       } else {
-        // Lógica Normal para outras perguntas
+        // Lógica Normal
         if (isCorrect) {
           if (q.id === 'bonus') newValue += 40000;
           else newValue += (q.value || 0);
         } else {
+          // Penalidades
           if (q.id === 'bonus') newValue = Math.max(0, newValue - 10000);
           else if (room.current_question_index <= 5) newValue = Math.max(0, newValue - 2000);
           else if (room.current_question_index <= 14) newValue = Math.max(0, newValue - 10000);
           else newValue = Math.max(0, newValue - 40000);
 
-          if (q.id === 'prof') eliminated = true;
-          else if (room.current_question_index >= 15) eliminated = true;
+          // Eliminação: Pergunta do Prof OU da 12ª em diante (index 11+)
+          if (q.id === 'prof' || room.current_question_index >= 11) {
+            eliminated = true;
+          }
         }
       }
 
@@ -334,6 +335,15 @@ const MillionaireGame = () => {
 
         {room.phase === 'question' ? (
           <div className="space-y-8">
+            {/* Sinalização Chamativa para Pergunta do Prof */}
+            {currentQuestion.id === 'prof' && (
+              <div className="flex justify-center animate-bounce">
+                <Badge className="bg-red-600 text-white px-10 py-4 text-2xl font-black rounded-full shadow-[0_0_30px_rgba(220,38,38,0.5)] border-4 border-white flex items-center gap-3">
+                  <AlertCircle className="w-8 h-8" /> RODADA ELIMINATÓRIA <AlertCircle className="w-8 h-8" />
+                </Badge>
+              </div>
+            )}
+
             {/* Lógica da Rodada da Maldade */}
             {currentQuestion.id === 'maldade' ? (
               <div className="space-y-8">
@@ -411,7 +421,7 @@ const MillionaireGame = () => {
                 )}
               </div>
             ) : (
-              // Lógica Normal para outras perguntas
+              // Lógica Normal
               <div className="space-y-8">
                 {!myPlayer.is_eliminated && !currentQuestion.isSpecial && (
                   <div className="flex justify-center gap-4">

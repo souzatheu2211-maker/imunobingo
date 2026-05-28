@@ -6,6 +6,7 @@ export interface MillionaireQuestion {
   correct: "A" | "B" | "C" | "D";
   explanation?: string;
   isSpecial?: boolean;
+  isElimination?: boolean;
   value?: number;
 }
 
@@ -32,6 +33,7 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     id: "prof",
     difficulty: "special",
     isSpecial: true,
+    isElimination: true,
     question: "Qual o nome completo do professor da disciplina?",
     options: { A: "Dr. Genivaldo Santos Cruz", B: "Genivaldo Santos Cruz", C: "Genivaldo Cruz Santos", D: "Dr Genivaldo Cruz Santos" },
     correct: "C",
@@ -46,16 +48,6 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     correct: "B",
     value: 4000,
     explanation: "Os linfócitos B participam da resposta imune específica e, quando ativados, diferenciam-se em plasmócitos produtores de anticorpos."
-  },
-  {
-    id: "maldade",
-    difficulty: "special",
-    isSpecial: true,
-    question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela para subir ainda mais, deseja eliminar alguém?",
-    options: { A: "SIM", B: "NÃO", C: "TALVEZ", D: "NUNCA" },
-    correct: "B",
-    value: 5000,
-    explanation: "NÃO SEJA GANANCIOSO. UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS."
   },
   {
     id: "q4",
@@ -111,6 +103,16 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     correct: "A",
     value: 35000,
     explanation: "Basófilos liberam histamina durante reações inflamatórias e alérgicas."
+  },
+  {
+    id: "maldade",
+    difficulty: "special",
+    isSpecial: true,
+    question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela para subir ainda mais, deseja eliminar alguém?",
+    options: { A: "SIM", B: "NÃO", C: "TALVEZ", D: "NUNCA" },
+    correct: "B",
+    value: 40000,
+    explanation: "NÃO SEJA GANANCIOSO. UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS."
   },
   {
     id: "q9",

@@ -22,7 +22,8 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  Ghost
+  Ghost,
+  Wallet
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -274,9 +275,22 @@ const MillionaireGame = () => {
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <Trophy className="text-yellow-500" />
-            <span className="font-black text-white tracking-tight">SALA #{room.code}</span>
+            <div className="flex flex-col">
+              <span className="font-black text-white tracking-tight leading-none">SALA #{room.code}</span>
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Arena Imuno</span>
+            </div>
           </div>
+
+          {/* MOSTRADOR DE PONTUAÇÃO DO JOGADOR */}
           <div className="flex items-center gap-4">
+            <div className="bg-yellow-600/20 px-5 py-2 rounded-2xl border border-yellow-500/30 flex items-center gap-3 shadow-lg shadow-yellow-900/10">
+              <Wallet className="w-4 h-4 text-yellow-500" />
+              <div className="flex flex-col">
+                <span className="text-[7px] font-black text-yellow-500 uppercase tracking-[0.2em] leading-none mb-1">Seu Saldo</span>
+                <span className="text-sm font-black text-white leading-none">R$ {myPlayer.current_value.toLocaleString()}</span>
+              </div>
+            </div>
+
             {myPlayer.is_eliminated && <Badge className="bg-red-600/20 text-red-500 border-red-500/30 px-3 py-1 animate-pulse">ELIMINADO</Badge>}
             <Button variant="ghost" size="sm" className="text-slate-500 hover:text-red-400" onClick={() => navigate('/millionaire')}>
               <LogOut className="w-4 h-4 mr-2" /> SAIR

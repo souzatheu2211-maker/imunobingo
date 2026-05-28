@@ -50,6 +50,14 @@ const BattleArena = () => {
 
   const myPlayer = players.find(p => p.user_id === currentUserId);
 
+  // Redirecionar ao lobby se a página for atualizada
+  useEffect(() => {
+    const navigationEntries = performance.getEntriesByType("navigation");
+    if (navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload') {
+      navigate('/battle');
+    }
+  }, [navigate]);
+
   const getClassIcon = (className: string) => {
     switch (className) {
       case 'Macrófago': return Shield;
@@ -93,7 +101,6 @@ const BattleArena = () => {
           .single();
 
         if (roomError || !roomData) {
-          showError("Sala não encontrada.");
           navigate('/battle');
           return;
         }
@@ -104,13 +111,21 @@ const BattleArena = () => {
           .select('*')
           .eq('battle_room_id', roomId);
         
-        setPlayers(playersData || []);
+        const playersList = playersData || [];
+        setPlayers(playersList);
+
+        // Se eu não estiver na lista de jogadores, volto pro lobby
+        if (!playersList.find(p => p.user_id === user.id)) {
+          navigate('/battle');
+          return;
+        }
 
         if (roomData.status === 'playing') {
           setCurrentQuestion(BATTLE_QUESTIONS[roomData.current_question_index]);
         }
       } catch (error) {
         console.error("Erro no setup:", error);
+        navigate('/battle');
       } finally {
         setLoading(false);
       }
@@ -171,12 +186,10 @@ const BattleArena = () => {
   const startBattle = async () => {
     try {
       if (!room) return;
-      // Permitir iniciar com 1 jogador para testes, mas o ideal são 2
       if (players.length < 1) {
         showError("Aguarde pelo menos um jogador entrar.");
         return;
       }
-      // CORREÇÃO: Tabela correta é battle_rooms
       const { error } = await supabase
         .from('battle_rooms')
         .update({ status: 'playing', current_question_index: 0 })
@@ -196,32 +209,10 @@ const BattleArena = () => {
     const isCorrect = index === currentQuestion?.answer;
     const responseTime = (20 - timeLeft) * 1000;
 
-    // Tenta registrar a resposta (opcional, dependendo da sua estrutura de banco)
-    try {
-      await supabase.from('battle_answers').insert({
-        battle_room_id: roomId,
-        player_id: myPlayer.id,
-        round: room.current_question_index,
-        is_correct: isCorrect,
-        response_time_ms: responseTime
-      });
-    } catch (e) {
-      console.log("Tabela battle_answers não encontrada, ignorando log.");
-    }
-
     if (isCorrect) {
       const speedBonus = Math.floor(timeLeft * 1.5);
       const damage = (myPlayer.attack || 10) + speedBonus;
       
-      // Atualiza localmente para feedback imediato
-      setPlayers(prev => prev.map(p => {
-        if (p.id !== myPlayer.id && p.hp > 0) {
-          return { ...p, hp: Math.max(0, p.hp - damage) };
-        }
-        return p;
-      }));
-
-      // Atualiza no banco para os outros jogadores
       const others = players.filter(p => p.id !== myPlayer.id && p.hp > 0);
       for (const other of others) {
         const newHp = Math.max(0, other.hp - damage);
@@ -232,13 +223,11 @@ const BattleArena = () => {
       showSuccess("Acerto Crítico!");
     } else {
       const newHp = Math.max(0, myPlayer.hp - 10);
-      setPlayers(prev => prev.map(p => p.id === myPlayer.id ? { ...p, hp: newHp } : p));
       await supabase.from('battle_players').update({ hp: newHp }).eq('id', myPlayer.id);
       setLogs(prev => [`Você errou e perdeu 10 HP!`, ...prev.slice(0, 4)]);
       showError("Erro de Defesa!");
     }
 
-    // O Host controla a passagem de turnos
     if (room.host_id === currentUserId) {
       setTimeout(async () => {
         const nextIndex = room.current_question_index + 1;

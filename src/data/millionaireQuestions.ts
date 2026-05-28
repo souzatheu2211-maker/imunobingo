@@ -5,7 +5,6 @@ export interface MillionaireQuestion {
   options: { A: string; B: string; C: string; D: string };
   correct: "A" | "B" | "C" | "D";
   explanation?: string;
-  tip?: string;
   isSpecial?: boolean;
   value?: number;
 }
@@ -17,7 +16,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula realiza fagocitose e atua na defesa inespecífica?",
     options: { A: "Hemácia", B: "Neutrófilo", C: "Plaqueta", D: "Fibroblasto" },
     correct: "B",
-    value: 1000
+    value: 1000,
+    explanation: "Os neutrófilos fazem parte da imunidade inata e são especializados em fagocitar microrganismos invasores, principalmente bactérias."
   },
   {
     id: "q2",
@@ -25,7 +25,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual imunoglobulina é a mais abundante na corrente sanguínea?",
     options: { A: "IgE", B: "IgM", C: "IgA", D: "IgG" },
     correct: "D",
-    value: 2000
+    value: 2000,
+    explanation: "A IgG é o anticorpo mais abundante no sangue e possui importante função na defesa contra infecções e memória imunológica."
   },
   {
     id: "prof",
@@ -34,7 +35,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual o nome completo do professor da disciplina?",
     options: { A: "Dr. Genivaldo Santos Cruz", B: "Genivaldo Santos Cruz", C: "Genivaldo Cruz Santos", D: "Dr Genivaldo Cruz Santos" },
     correct: "C",
-    explanation: "Não tem nem explicação alguém errar essa aqui."
+    value: 3000,
+    explanation: "“Não tem nem explicação alguém errar essa aqui.”"
   },
   {
     id: "q3",
@@ -42,7 +44,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula produz anticorpos?",
     options: { A: "Macrófago", B: "Linfócito B", C: "Neutrófilo", D: "Basófilo" },
     correct: "B",
-    value: 3000
+    value: 3000,
+    explanation: "Os linfócitos B participam da resposta imune específica e, quando ativados, diferenciam-se em plasmócitos produtores de anticorpos."
   },
   {
     id: "q4",
@@ -50,7 +53,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual estrutura apresenta antígenos às células T?",
     options: { A: "Ribossomo", B: "Lisossomo", C: "MHC", D: "Centríolo" },
     correct: "C",
-    value: 4000
+    value: 4000,
+    explanation: "O Complexo Principal de Histocompatibilidade (MHC) apresenta antígenos para reconhecimento pelas células T."
   },
   {
     id: "q5",
@@ -58,7 +62,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "As células NK atuam principalmente em qual tipo de imunidade?",
     options: { A: "Humoral", B: "Específica", C: "Inata", D: "Artificial" },
     correct: "C",
-    value: 5000
+    value: 5000,
+    explanation: "As células NK fazem parte da imunidade inata e atuam destruindo células infectadas por vírus e células tumorais."
   },
   {
     id: "bonus",
@@ -67,7 +72,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula é responsável pela produção de anticorpos?",
     options: { A: "Neutrófilo", B: "Macrófago", C: "Linfócito B", D: "Hemácia" },
     correct: "C",
-    explanation: "Os linfócitos B participam da resposta imune específica (humoral). Quando ativados, eles se diferenciam em plasmócitos, células responsáveis pela produção de anticorpos."
+    value: 40000,
+    explanation: "Os linfócitos B participam da resposta imune específica (humoral). Quando ativados, eles se diferenciam em plasmócitos, responsáveis pela produção de anticorpos."
   },
   {
     id: "q6",
@@ -75,7 +81,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula auxilia tanto a resposta humoral quanto a celular?",
     options: { A: "Hemácia", B: "Linfócito T auxiliar", C: "Plaqueta", D: "Eosinófilo" },
     correct: "B",
-    value: 10000
+    value: 10000,
+    explanation: "Os linfócitos T auxiliares coordenam a resposta imunológica ativando outras células do sistema imune."
   },
   {
     id: "q7",
@@ -83,7 +90,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual proteína do MHC é reconhecida pelas células T CD8?",
     options: { A: "MHC classe II", B: "IgG", C: "MHC classe I", D: "Complemento" },
     correct: "C",
-    value: 20000
+    value: 20000,
+    explanation: "As células T CD8 reconhecem antígenos apresentados pelo MHC classe I em células infectadas."
   },
   {
     id: "q8",
@@ -91,7 +99,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula libera histamina em reações alérgicas?",
     options: { A: "Basófilo", B: "Hemácia", C: "Neutrófilo", D: "Monócito" },
     correct: "A",
-    value: 30000
+    value: 30000,
+    explanation: "Basófilos liberam histamina durante reações inflamatórias e alérgicas."
   },
   {
     id: "q9",
@@ -99,7 +108,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "A perforina é produzida principalmente por:",
     options: { A: "Hemácias", B: "Células T citotóxicas", C: "Fibroblastos", D: "Plasmócitos" },
     correct: "B",
-    value: 40000
+    value: 40000,
+    explanation: "A perforina ajuda na destruição de células infectadas formando poros na membrana celular."
   },
   {
     id: "maldade",
@@ -116,7 +126,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula apresenta antígenos utilizando MHC classe II?",
     options: { A: "Hemácia", B: "Célula B", C: "Plaqueta", D: "Fibroblasto" },
     correct: "B",
-    value: 50000
+    value: 50000,
+    explanation: "As células B podem atuar como células apresentadoras de antígenos através do MHC classe II."
   },
   {
     id: "q11",
@@ -124,7 +135,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual imunoglobulina participa mais das alergias?",
     options: { A: "IgG", B: "IgA", C: "IgM", D: "IgE" },
     correct: "D",
-    value: 60000
+    value: 60000,
+    explanation: "A IgE está associada às reações alérgicas e defesa contra parasitas."
   },
   {
     id: "q12",
@@ -132,7 +144,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual célula combate principalmente parasitas?",
     options: { A: "Eosinófilo", B: "Hemácia", C: "Fibroblasto", D: "Condrócito" },
     correct: "A",
-    value: 70000
+    value: 70000,
+    explanation: "Os eosinófilos atuam principalmente contra infecções parasitárias e alergias."
   },
   {
     id: "q13",
@@ -140,7 +153,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "As células T citotóxicas possuem qual marcador?",
     options: { A: "CD4", B: "CD8", C: "CD20", D: "CD3 apenas" },
     correct: "B",
-    value: 80000
+    value: 80000,
+    explanation: "As células T citotóxicas possuem o marcador CD8 e destroem células infectadas."
   },
   {
     id: "q14",
@@ -148,7 +162,8 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual processo leva uma célula à morte programada?",
     options: { A: "Necrose", B: "Mitose", C: "Apoptose", D: "Fagocitose" },
     correct: "C",
-    value: 90000
+    value: 90000,
+    explanation: "A apoptose é um mecanismo controlado de morte celular importante para equilíbrio do organismo."
   },
   {
     id: "q15",
@@ -156,6 +171,7 @@ export const MILLIONAIRE_QUESTIONS: MillionaireQuestion[] = [
     question: "Qual estrutura é responsável por reconhecer antígenos específicos nos linfócitos T?",
     options: { A: "Ribossomo", B: "Receptor de célula T", C: "Complexo de Golgi", D: "Centríolo" },
     correct: "B",
-    value: 100000
+    value: 100000,
+    explanation: "O receptor de célula T (TCR) reconhece antígenos apresentados pelo MHC."
   }
 ];

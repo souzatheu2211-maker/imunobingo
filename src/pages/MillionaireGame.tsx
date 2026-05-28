@@ -192,36 +192,25 @@ const MillionaireGame = () => {
 
   useEffect(() => {
     const setup = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return navigate('/login');
-        setCurrentUserId(user.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return navigate('/login');
+      setCurrentUserId(user.id);
 
-        const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
-        if (!roomData) return navigate('/millionaire');
-        setRoom(roomData);
+      const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
+      if (!roomData) return navigate('/millionaire');
+      setRoom(roomData);
 
-        const { data: playersData } = await supabase
-          .from('millionaire_players')
-          .select('*, profiles(avatar_url)')
-          .eq('room_id', roomId);
-        
-        const pList = playersData?.map(p => ({ ...p, avatar_url: p.profiles?.avatar_url })) || [];
-        setPlayers(pList);
+      const { data: playersData } = await supabase
+        .from('millionaire_players')
+        .select('*, profiles(avatar_url)')
+        .eq('room_id', roomId);
+      
+      setPlayers(playersData?.map(p => ({ ...p, avatar_url: p.profiles?.avatar_url })) || []);
 
-        // Se eu não estiver na lista de jogadores, volto pro lobby
-        if (!pList.find(p => p.user_id === user.id)) {
-          navigate('/millionaire');
-          return;
-        }
+      const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
+      setAnswers(answersData || []);
 
-        const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
-        setAnswers(answersData || []);
-      } catch (e) {
-        navigate('/millionaire');
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     };
 
     setup();

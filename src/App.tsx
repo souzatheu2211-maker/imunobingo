@@ -134,6 +134,19 @@ const App = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const checkAdminStatus = async (user: any) => {
+    try {
+      if (user.email === 'theu@imuno.com') {
+        setIsAdmin(true);
+        return;
+      }
+      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
+      setIsAdmin(data?.is_admin || false);
+    } catch (e) {
+      setIsAdmin(false);
+    }
+  };
+
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -163,19 +176,6 @@ const App = () => {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const checkAdminStatus = async (user: any) => {
-    try {
-      if (user.email === 'theu@imuno.com') {
-        setIsAdmin(true);
-        return;
-      }
-      const { data } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-      setIsAdmin(data?.is_admin || false);
-    } catch (e) {
-      setIsAdmin(false);
-    }
-  };
 
   if (loading) {
     return (

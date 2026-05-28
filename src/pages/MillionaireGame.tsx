@@ -7,7 +7,6 @@ import { MILLIONAIRE_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Trophy, 
   Timer, 
@@ -45,6 +44,7 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
+  // Ajudas
   const [used5050, setUsed5050] = useState(false);
   const [usedProb, setUsedProb] = useState(false);
   const [aidUsedThisTurn, setAidUsedThisTurn] = useState(false);
@@ -57,14 +57,6 @@ const MillionaireGame = () => {
   
   const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index] || MILLIONAIRE_QUESTIONS[0];
   const myAnswer = answers.find(a => a.player_id === myPlayer?.id && a.question_index === room?.current_question_index);
-
-  // Lógica para redirecionar ao lobby se a página for atualizada
-  useEffect(() => {
-    const navigationEntries = performance.getEntriesByType("navigation");
-    if (navigationEntries.length > 0 && (navigationEntries[0] as PerformanceNavigationTiming).type === 'reload') {
-      navigate('/millionaire');
-    }
-  }, [navigate]);
 
   useEffect(() => {
     if (room?.phase === 'question' && room?.question_started_at) {
@@ -98,6 +90,9 @@ const MillionaireGame = () => {
       .eq('room_id', roomId)
       .eq('question_index', room.current_question_index);
 
+    const sortedPlayers = [...players].sort((a, b) => a.current_value - b.current_value);
+    const lastPlayerId = sortedPlayers[0]?.id;
+
     for (const player of players) {
       if (player.is_eliminated) continue;
 
@@ -117,16 +112,19 @@ const MillionaireGame = () => {
         else if (room.current_question_index <= 14) newValue = Math.max(0, newValue - 10000);
         else newValue = Math.max(0, newValue - 40000);
 
+        // Eliminação: Professor ou a partir da Q13 (index 15)
         if (q.id === 'prof') eliminated = true;
         else if (room.current_question_index >= 15) eliminated = true;
         else if (q.id === 'maldade' && playerAns?.answer === 'A') eliminated = true;
       }
 
+      if (q.id === 'bonus' && player.id === lastPlayerId) eliminated = true;
+
       await supabase.from('millionaire_players').update({
         current_value: newValue,
         is_eliminated: eliminated,
         last_answered_index: room.current_question_index
-      }).eq('id', player.id);<dyad-write path="src/pages/MillionaireGame.tsx" description="Continuando a implementação do MillionaireGame com fotos e lógica de refresh.">
+      }).eq('id', player.id);
     }
 
     await supabase.from('millionaire_rooms').update({ phase: 'reveal' }).eq('id', roomId);
@@ -173,7 +171,8 @@ const MillionaireGame = () => {
       const keys = ['A', 'B', 'C', 'D'];
       let remaining = 100;
       
-      const correctProb = Math.floor(Math.random() * 20) + 50;
+      // Dá vantagem à correta
+      const correctProb = Math.floor(Math.random() * 20) + 50; // 50-70%
       probs[currentQuestion.correct] = correctProb;
       remaining -= correctProb;
 
@@ -201,13 +200,8 @@ const MillionaireGame = () => {
       if (!roomData) return navigate('/millionaire');
       setRoom(roomData);
 
-      // Buscando jogadores com avatar_url do perfil
-      const { data: playersData } = await supabase
-        .from('millionaire_players')
-        .select('*, profiles(avatar_url)')
-        .eq('room_id', roomId);
-      
-      setPlayers(playersData?.map(p => ({ ...p, avatar_url: p.profiles?.avatar_url })) || []);
+      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
+      setPlayers(playersData || []);
 
       const { data: answersData } = await supabase.from('millionaire_answers').select('*').eq('room_id', roomId);
       setAnswers(answersData || []);
@@ -227,19 +221,10 @@ const MillionaireGame = () => {
           setAidUsedThisTurn(false);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, async (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', payload.new.user_id).single();
-          const newPlayer = { ...payload.new, avatar_url: profile?.avatar_url };
-          
-          setPlayers(prev => {
-            const exists = prev.find(p => p.id === payload.new.id);
-            if (exists) return prev.map(p => p.id === payload.new.id ? newPlayer : p);
-            return [...prev, newPlayer];
-          });
-        } else if (payload.eventType === 'DELETE') {
-          setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
-        }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
+        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
+        else if (payload.eventType === 'DELETE') setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
         setAnswers(prev => [...prev, payload.new]);
@@ -249,14 +234,7 @@ const MillionaireGame = () => {
     return () => { supabase.removeChannel(channel); };
   }, [roomId, navigate]);
 
-  if (loading || !room || !myPlayer) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
-        <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
-        <p className="font-black uppercase tracking-widest text-xs animate-pulse">Sincronizando Arena...</p>
-      </div>
-    );
-  }
+  if (loading || !room || !myPlayer) return null;
 
   const getDelta = () => {
     if (!myAnswer) return 0;
@@ -274,6 +252,8 @@ const MillionaireGame = () => {
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
+      
+      {/* Coluna Lateral */}
       <div className="lg:col-span-3 space-y-6 order-2 lg:order-1">
         <Card className="bg-slate-900/80 border-white/10 rounded-3xl overflow-hidden">
           <div className="p-4 bg-white/5 border-b border-white/5">
@@ -294,6 +274,7 @@ const MillionaireGame = () => {
         </Card>
       </div>
 
+      {/* Área Principal */}
       <div className="lg:col-span-9 space-y-6 order-1 lg:order-2">
         <div className="flex items-center justify-between bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-xl">
           <div className="flex items-center gap-3">
@@ -304,6 +285,7 @@ const MillionaireGame = () => {
             </div>
           </div>
 
+          {/* MOSTRADOR DE PONTUAÇÃO DO JOGADOR */}
           <div className="flex items-center gap-4">
             <div className="bg-yellow-600/20 px-5 py-2 rounded-2xl border border-yellow-500/30 flex items-center gap-3 shadow-lg shadow-yellow-900/10">
               <Wallet className="w-4 h-4 text-yellow-500" />
@@ -333,6 +315,7 @@ const MillionaireGame = () => {
 
         {room.phase === 'question' ? (
           <div className="space-y-8">
+            {/* Ajudas */}
             {!myPlayer.is_eliminated && !currentQuestion.isSpecial && (
               <div className="flex justify-center gap-4">
                 <Button onClick={() => useAid('5050')} disabled={used5050 || aidUsedThisTurn || !!myAnswer} className={cn("h-14 px-6 rounded-2xl font-black", used5050 ? "bg-slate-800" : "bg-violet-600")}>
@@ -344,6 +327,7 @@ const MillionaireGame = () => {
               </div>
             )}
 
+            {/* UI Dinâmica para Rodadas Especiais */}
             {currentQuestion.isSpecial && (
               <div className="flex justify-center animate-bounce">
                 <Badge className={cn(
@@ -487,12 +471,9 @@ const MillionaireGame = () => {
                   {players.map((p) => (
                     <div key={p.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 animate-in slide-in-from-bottom-2">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10 rounded-xl border border-white/10">
-                          <AvatarImage src={p.avatar_url} className="object-cover" />
-                          <AvatarFallback className="bg-slate-800 text-xs font-black">
-                            {p.name[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center border border-white/5">
+                          <User className="w-5 h-5 text-slate-400" />
+                        </div>
                         <div className="text-left">
                           <p className="font-black text-white text-sm flex items-center gap-1">
                             {p.name}

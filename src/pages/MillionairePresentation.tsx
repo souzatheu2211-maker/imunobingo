@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { MILLIONAIRE_QUESTIONS } from '@/data/millionaireQuestions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Timer, Users, Sparkles, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,14 +20,8 @@ const MillionairePresentation = () => {
       const { data: roomData } = await supabase.from('millionaire_rooms').select('*').eq('id', roomId).single();
       if (roomData) setRoom(roomData);
 
-      const { data: playersData } = await supabase
-        .from('millionaire_players')
-        .select('*, profiles(avatar_url)')
-        .eq('room_id', roomId);
-      
-      if (playersData) {
-        setPlayers(playersData.map(p => ({ ...p, avatar_url: p.profiles?.avatar_url })));
-      }
+      const { data: playersData } = await supabase.from('millionaire_players').select('*').eq('room_id', roomId);
+      if (playersData) setPlayers(playersData);
     };
 
     fetchData();
@@ -37,18 +30,9 @@ const MillionairePresentation = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_rooms', filter: `id=eq.${roomId}` }, (payload) => {
         setRoom(payload.new);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, async (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-          const { data: profile } = await supabase.from('profiles').select('avatar_url').eq('id', payload.new.user_id).single();
-          const newPlayer = { ...payload.new, avatar_url: profile?.avatar_url };
-          setPlayers(prev => {
-            const exists = prev.find(p => p.id === payload.new.id);
-            if (exists) return prev.map(p => p.id === payload.new.id ? newPlayer : p);
-            return [...prev, newPlayer];
-          });
-        } else if (payload.eventType === 'DELETE') {
-          setPlayers(prev => prev.filter(p => p.id !== payload.old.id));
-        }
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_players', filter: `room_id=eq.${roomId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') setPlayers(prev => [...prev, payload.new]);
+        else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
       })
       .subscribe();
 
@@ -62,8 +46,7 @@ const MillionairePresentation = () => {
         const startedAt = new Date(room.question_started_at).getTime();
         const now = Date.now();
         const elapsed = Math.floor((now - startedAt) / 1000);
-        const remaining = Math.max(0, 20 - elapsed);
-        setTimeLeft(remaining);
+        setTimeLeft(Math.max(0, 20 - elapsed));
       }, 1000);
     }
     return () => clearInterval(timer);
@@ -76,7 +59,9 @@ const MillionairePresentation = () => {
     </div>
   );
 
-  const currentQuestion = MILLIONAIRE_QUESTIONS[room?.current_question_index] || MILLIONAIRE_QUESTIONS[0];
+  // Busca a pergunta baseada no ID salvo na sala
+  const currentQuestionId = room?.question_ids?.[room?.current_question_index];
+  const currentQuestion = MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
 
   return (
     <div className="min-h-screen bg-slate-950 p-12 flex flex-col gap-12 overflow-hidden">
@@ -172,12 +157,6 @@ const MillionairePresentation = () => {
                 )}>
                   <div className="flex items-center gap-4">
                     <span className={cn("text-2xl font-black w-8", i === 0 ? "text-yellow-500" : "text-slate-600")}>{i + 1}º</span>
-                    <Avatar className="w-14 h-14 rounded-2xl border-2 border-white/10">
-                      <AvatarImage src={p.avatar_url} className="object-cover" />
-                      <AvatarFallback className="bg-slate-800 text-lg font-black">
-                        {p.name[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
                     <div className="flex flex-col">
                       <span className="text-2xl font-black text-white tracking-tight">{p.name}</span>
                       <span className={cn("text-[10px] font-black uppercase", p.is_eliminated ? "text-red-500" : "text-emerald-500")}>

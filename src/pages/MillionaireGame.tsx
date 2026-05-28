@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { MILLIONAIRE_QUESTIONS, SPECIAL_QUESTIONS, MillionaireQuestion } from '@/data/millionaireQuestions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Trophy, 
   Timer, 
@@ -16,24 +15,16 @@ import {
   Monitor, 
   Sparkles, 
   CheckCircle2,
-  Zap,
   Loader2,
-  Send,
   XCircle,
-  Ghost,
-  AlertCircle,
   Lightbulb,
   Repeat,
-  ShieldCheck,
-  HandMetal,
   Split,
   Skull,
-  Flame,
   UserMinus,
   TrendingUp,
   TrendingDown,
-  ShieldAlert,
-  Clock
+  ShieldAlert
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -57,6 +48,7 @@ const MillionaireGame = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [processingResults, setProcessingResults] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   
   const [used5050, setUsed5050] = useState(false);
   const [usedDouble, setUsedDouble] = useState(false);
@@ -70,38 +62,34 @@ const MillionaireGame = () => {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const myPlayer = players.find(p => p.user_id === currentUserId);
-  
-  const getActiveQuestion = () => {
-    if (!room) return MILLIONAIRE_QUESTIONS[0];
 
-    const isProfessor = room.phase === 'special_professor' || room.phase === 'reveal_special_professor';
-    const isSurprise = room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise';
-    const isMalice = room.phase === 'special_malice' || room.phase === 'reveal_special_malice';
+  useEffect(() => {
+    const fetchQuestion = async () => {
+      if (!room) return;
 
-    if (isProfessor) return SPECIAL_QUESTIONS.professor;
-    if (isSurprise) return SPECIAL_QUESTIONS.surprise;
-    if (isMalice) return {
-      id: 'malice',
-      difficulty: 'special',
-      question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela pra subir ainda mais no jogo, deseja eliminar alguém?",
-      options: { A: "SIM", B: "NÃO", C: "", D: "" },
-      correct: "B",
-      explanation: "NÃO SEJA GANANCIOSO. UM CORPO NÃO FUNCIONA SOZINHO SEM O TRABALHO EM CONJUNTO DE TODAS AS CÉLULAS.",
-      tip: ""
-    } as MillionaireQuestion;
+      let qId = '';
+      if (room.phase === 'special_professor' || room.phase === 'reveal_special_professor') qId = 's_prof';
+      else if (room.phase === 'special_surprise' || room.phase === 'reveal_special_surprise') qId = 's_surp';
+      else if (room.phase === 'special_malice' || room.phase === 'reveal_special_malice') {
+        setCurrentQuestion({
+          id: 'malice',
+          question: "O quão ganancioso você é? Você pode eliminar uma pessoa do jogo e receber todo valor dela pra subir ainda mais no jogo, deseja eliminar alguém?",
+          options: { A: "SIM", B: "NÃO" },
+          correct: "B"
+        });
+        return;
+      } else {
+        qId = room.question_ids?.[room.current_question_index];
+      }
 
-    const currentQuestionId = room.question_ids?.[room.current_question_index];
-    return MILLIONAIRE_QUESTIONS.find(q => q.id === currentQuestionId) || MILLIONAIRE_QUESTIONS[0];
-  };
+      if (qId) {
+        const { data } = await supabase.from('millionaire_questions').select('*').eq('id', qId).single();
+        if (data) setCurrentQuestion(data);
+      }
+    };
 
-  const currentQuestion = getActiveQuestion();
-  const isSpecialPhase = room?.phase?.startsWith('special_');
-  
-  const myAnswer = answers.find(a => 
-    a.player_id === myPlayer?.id && 
-    a.question_index === room?.current_question_index && 
-    (a.phase === room?.phase || a.phase?.replace('reveal_', '') === room?.phase?.replace('reveal_', ''))
-  );
+    fetchQuestion();
+  }, [room?.phase, room?.current_question_index, room?.question_ids]);
 
   useEffect(() => {
     if (room?.phase?.includes('question') || room?.phase?.startsWith('special_')) {
@@ -114,8 +102,7 @@ const MillionaireGame = () => {
 
         if (remaining === 0 && room.host_id === currentUserId && !room.phase.startsWith('reveal') && !processingResults) {
           setProcessingResults(true);
-          console.log("[HOST] Tempo esgotado. Iniciando processamento em 3s...");
-          setTimeout(() => handleRevealPhase(), 3000);
+          setTimeout(() => handleRevealPhase(), 2000);
         }
       };
 
@@ -130,25 +117,17 @@ const MillionaireGame = () => {
   }, [room?.phase, room?.question_started_at, room?.host_id, currentUserId, processingResults]);
 
   const handleRevealPhase = async () => {
-    if (room.host_id !== currentUserId) return;
+    if (room.host_id !== currentUserId || !currentQuestion) return;
 
     const currentPhase = room.phase;
     const qIndex = room.current_question_index;
     const isSpecial = currentPhase.startsWith('special_');
-    let roundQuestion: any = currentQuestion;
 
-    console.log(`[HOST] --- PROCESSANDO RODADA ${qIndex} ---`);
-
-    const { data: roundAnswers, error: fetchError } = await supabase
+    const { data: roundAnswers } = await supabase
       .from('millionaire_answers')
       .select('*')
       .eq('room_id', roomId)
       .eq('question_index', qIndex);
-
-    if (fetchError) {
-      console.error("[HOST] Erro ao buscar respostas:", fetchError);
-      return;
-    }
 
     const { data: currentPlayersData } = await supabase
       .from('millionaire_players')
@@ -161,12 +140,9 @@ const MillionaireGame = () => {
       if (player.is_eliminated) continue;
 
       const playerAns = roundAnswers?.find(a => a.player_id === player.id);
-      
       const pChoice = (playerAns?.answer || "").trim().toUpperCase();
-      const cChoice = (roundQuestion.correct || "").trim().toUpperCase();
+      const cChoice = (currentQuestion.correct || "").trim().toUpperCase();
       const isCorrect = pChoice === cChoice && pChoice !== "";
-
-      console.log(`[HOST] Jogador: ${player.name} | Resposta: ${pChoice} | Correto: ${cChoice} | Veredito: ${isCorrect}`);
 
       if (playerAns) {
         await supabase.from('millionaire_answers').update({ is_correct: isCorrect }).eq('id', playerAns.id);
@@ -283,31 +259,26 @@ const MillionaireGame = () => {
     const cChoice = currentQuestion.correct.trim().toUpperCase();
     const isCorrect = pChoice === cChoice;
 
-    console.log(`[PLAYER] Enviando: ${pChoice} | Correto: ${cChoice}`);
-
     try {
       if (room.phase === 'special_malice') {
         if (selectedChoice === 'A') {
           setSelectedChoice('PICKING');
           setSubmitting(false);
         } else {
-          const { error } = await supabase.from('millionaire_answers').insert({
+          await supabase.from('millionaire_answers').insert({
             room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
             answer: 'B', is_correct: true, phase: room.phase
           });
-          if (error) throw error;
           showSuccess("Você escolheu a humildade!");
         }
       } else {
-        const { error } = await supabase.from('millionaire_answers').insert({
+        await supabase.from('millionaire_answers').insert({
           room_id: roomId, player_id: myPlayer.id, question_index: room.current_question_index,
           answer: pChoice, is_correct: isCorrect, phase: room.phase
         });
-        if (error) throw error;
         showSuccess("Resposta salva no laboratório!");
       }
     } catch (error: any) {
-      console.error("[PLAYER] Erro ao salvar:", error);
       showError("Falha na conexão: " + error.message);
       setSubmitting(false);
     }
@@ -339,7 +310,10 @@ const MillionaireGame = () => {
 
   const startGame = async () => {
     if (room.host_id !== currentUserId) return;
-    const questionIds = MILLIONAIRE_QUESTIONS.sort(() => Math.random() - 0.5).slice(0, 15).map(q => q.id);
+    const { data: questions } = await supabase.from('millionaire_questions').select('id').eq('is_special', false);
+    if (!questions) return;
+    
+    const questionIds = questions.sort(() => Math.random() - 0.5).slice(0, 15).map(q => q.id);
     await supabase.from('millionaire_rooms').update({
       status: 'playing', phase: 'question', current_question_index: 0,
       question_ids: questionIds, question_started_at: new Date().toISOString()
@@ -384,11 +358,8 @@ const MillionaireGame = () => {
         else if (payload.eventType === 'UPDATE') setPlayers(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'millionaire_answers', filter: `room_id=eq.${roomId}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setAnswers(prev => [...prev, payload.new]);
-        } else if (payload.eventType === 'UPDATE') {
-          setAnswers(prev => prev.map(a => a.id === payload.new.id ? payload.new : a));
-        }
+        if (payload.eventType === 'INSERT') setAnswers(prev => [...prev, payload.new]);
+        else if (payload.eventType === 'UPDATE') setAnswers(prev => prev.map(a => a.id === payload.new.id ? payload.new : a));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -397,6 +368,7 @@ const MillionaireGame = () => {
   if (loading || !room || !myPlayer) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Loader2 className="animate-spin" /></div>;
 
   const isFirstPlace = players.sort((a, b) => b.current_value - a.current_value)[0]?.id === myPlayer.id;
+  const myAnswer = answers.find(a => a.player_id === myPlayer.id && a.question_index === room.current_question_index && a.phase === room.phase);
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
@@ -415,9 +387,9 @@ const MillionaireGame = () => {
                 i < 3 && !p.is_eliminated && "ring-1 ring-yellow-500/30"
               )}>
                 <div className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8 border border-white/10">
-                    <AvatarFallback className="bg-slate-800 text-[10px] font-black">{p.name[0]}</AvatarFallback>
-                  </Avatar>
+                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-black border border-white/10">
+                    {p.name[0]}
+                  </div>
                   <div className="flex flex-col">
                     <span className={cn("text-[11px] font-bold", p.is_eliminated ? "text-slate-600 line-through" : "text-white")}>
                       {i === 0 && !p.is_eliminated && "👑 "}{p.name}
@@ -438,8 +410,8 @@ const MillionaireGame = () => {
           <div className="p-4 grid grid-cols-3 gap-2">
             <Button 
               variant="outline" 
-              onClick={() => { if (!helpUsedThisRound && !used5050 && !isSpecialPhase && !myAnswer) {
-                const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct && currentQuestion.options[key as keyof typeof currentQuestion.options]);
+              onClick={() => { if (!helpUsedThisRound && !used5050 && !isSpecialPhase && !myAnswer && currentQuestion) {
+                const wrongOptions = Object.keys(currentQuestion.options).filter(key => key !== currentQuestion.correct);
                 const toHide = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
                 setHiddenOptions(toHide);
                 setUsed5050(true);
@@ -447,10 +419,7 @@ const MillionaireGame = () => {
                 showSuccess("50/50 Ativado!");
               }}}
               disabled={helpUsedThisRound || used5050 || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
-              className={cn(
-                "flex flex-col h-16 gap-1 border-white/10",
-                used5050 ? "opacity-30 grayscale" : "hover:bg-emerald-500/10 hover:border-emerald-500/30"
-              )}
+              className={cn("flex flex-col h-16 gap-1 border-white/10", used5050 ? "opacity-30 grayscale" : "hover:bg-emerald-500/10")}
             >
               <Split className="w-4 h-4" />
               <span className="text-[8px] font-black">50/50</span>
@@ -464,10 +433,7 @@ const MillionaireGame = () => {
                 showSuccess("Dupla Chance Ativada!");
               }}}
               disabled={helpUsedThisRound || usedDouble || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
-              className={cn(
-                "flex flex-col h-16 gap-1 border-white/10",
-                usedDouble ? "opacity-30 grayscale" : "hover:bg-blue-500/10 hover:border-blue-500/30"
-              )}
+              className={cn("flex flex-col h-16 gap-1 border-white/10", usedDouble ? "opacity-30 grayscale" : "hover:bg-blue-500/10")}
             >
               <Repeat className="w-4 h-4" />
               <span className="text-[8px] font-black">DUPLA</span>
@@ -481,10 +447,7 @@ const MillionaireGame = () => {
                 showSuccess("Dica Revelada!");
               }}}
               disabled={helpUsedThisRound || usedTip || isSpecialPhase || !!myAnswer || myPlayer.is_eliminated || submitting}
-              className={cn(
-                "flex flex-col h-16 gap-1 border-white/10",
-                usedTip ? "opacity-30 grayscale" : "hover:bg-yellow-500/10 hover:border-yellow-500/30"
-              )}
+              className={cn("flex flex-col h-16 gap-1 border-white/10", usedTip ? "opacity-30 grayscale" : "hover:bg-yellow-500/10")}
             >
               <Lightbulb className="w-4 h-4" />
               <span className="text-[8px] font-black">DICA</span>
@@ -548,7 +511,7 @@ const MillionaireGame = () => {
                   className="h-24 bg-white/5 border-white/10 hover:bg-red-600/20 rounded-3xl flex items-center justify-between px-8"
                 >
                   <div className="flex items-center gap-4">
-                    <Avatar><AvatarFallback>{p.name[0]}</AvatarFallback></Avatar>
+                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">{p.name[0]}</div>
                     <div className="text-left">
                       <p className="font-black text-white">{p.name}</p>
                       <p className="text-xs text-yellow-500">R$ {p.current_value.toLocaleString()}</p>
@@ -560,7 +523,7 @@ const MillionaireGame = () => {
             </div>
             <Button variant="ghost" onClick={() => setSelectedChoice(null)} className="w-full text-slate-500">VOLTAR</Button>
           </div>
-        ) : (room.phase === 'question' || room.phase.startsWith('special_')) ? (
+        ) : (room.phase === 'question' || room.phase.startsWith('special_')) && currentQuestion ? (
           <div className="space-y-8">
             <Card className={cn(
               "rounded-[3rem] p-12 shadow-2xl relative overflow-hidden transition-all duration-1000",
@@ -636,13 +599,13 @@ const MillionaireGame = () => {
               </div>
             )}
           </div>
-        ) : room.phase.startsWith('reveal') ? (
+        ) : room.phase.startsWith('reveal') && currentQuestion ? (
           <div className="space-y-8 animate-in zoom-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center flex flex-col justify-center">
                 <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>
                 <div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">
-                  {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
+                  {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct]}
                 </div>
                 <p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p>
               </Card>

@@ -25,7 +25,9 @@ import {
   ShieldCheck,
   HandMetal,
   Split,
-  Skull
+  Skull,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import confetti from 'canvas-confetti';
@@ -108,22 +110,21 @@ const MillionaireGame = () => {
       // Lógica de Pontuação e Eliminação
       if (isCorrect) {
         if (q.id === 'bonus') newValue += 40000;
-        else if (q.id === 'maldade') newValue += 0; // Maldade não dá pontos diretos
+        else if (q.id === 'maldade') newValue += 0;
         else newValue += (q.value || 0);
       } else {
         // Penalidades por erro
         if (q.id === 'bonus') newValue = Math.max(0, newValue - 10000);
-        else if (room.current_question_index <= 5) newValue = Math.max(0, newValue - 2000); // Q1-Q5
-        else if (room.current_question_index <= 12) newValue = Math.max(0, newValue - 10000); // Q6-Q10
-        else newValue = Math.max(0, newValue - 40000); // Q11-Q15
+        else if (room.current_question_index <= 5) newValue = Math.max(0, newValue - 2000);
+        else if (room.current_question_index <= 14) newValue = Math.max(0, newValue - 10000);
+        else newValue = Math.max(0, newValue - 40000);
 
-        // Regras de Eliminação
+        // Regras de Eliminação: Apenas a partir da Pergunta 13 (index 15) ou Professor
         if (q.id === 'prof') eliminated = true;
-        else if (room.current_question_index >= 13) eliminated = true; // A partir da Q11
-        else if (q.id === 'maldade' && playerAns?.answer === 'A') eliminated = true; // Ganancioso eliminado
+        else if (room.current_question_index >= 15) eliminated = true;
+        else if (q.id === 'maldade' && playerAns?.answer === 'A') eliminated = true;
       }
 
-      // Regra do Bônus: Último eliminado
       if (q.id === 'bonus' && player.id === lastPlayerId) eliminated = true;
 
       await supabase.from('millionaire_players').update({
@@ -157,7 +158,7 @@ const MillionaireGame = () => {
           question_started_at: new Date().toISOString()
         }).eq('id', roomId);
       }
-    }, 5000);
+    }, 8000); // Aumentado para dar tempo de ler a explicação
   };
 
   const handleChoiceClick = (key: string) => {
@@ -268,6 +269,21 @@ const MillionaireGame = () => {
   if (loading || !room || !myPlayer) return null;
 
   const isLeader = [...players].sort((a, b) => b.current_value - a.current_value)[0]?.id === myPlayer.id;
+
+  // Cálculo do delta para exibição na revelação
+  const getDelta = () => {
+    if (!myAnswer) return 0;
+    const q = currentQuestion;
+    if (myAnswer.is_correct) {
+      if (q.id === 'bonus') return 40000;
+      return q.value || 0;
+    } else {
+      if (q.id === 'bonus') return -10000;
+      if (room.current_question_index <= 5) return -2000;
+      if (room.current_question_index <= 14) return -10000;
+      return -40000;
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 animate-in fade-in duration-700">
@@ -397,13 +413,53 @@ const MillionaireGame = () => {
             )}
           </div>
         ) : room.phase === 'reveal' ? (
-          <Card className="bg-white/90 border-white/20 rounded-[3rem] p-12 shadow-2xl text-center animate-in zoom-in">
-            <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest mb-4">Resposta Correta</h2>
-            <div className="bg-emerald-500 text-white p-8 rounded-3xl text-4xl font-black shadow-xl">
-              {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
-            </div>
-            {currentQuestion.explanation && <p className="mt-8 text-slate-600 font-medium italic">"{currentQuestion.explanation}"</p>}
-          </Card>
+          <div className="space-y-6 animate-in zoom-in duration-500">
+            <Card className={cn(
+              "border-none rounded-[3rem] p-10 shadow-2xl text-center relative overflow-hidden",
+              myAnswer?.is_correct ? "bg-emerald-500 text-white" : "bg-red-600 text-white"
+            )}>
+              <div className="absolute top-0 left-0 w-full h-2 bg-white/20" />
+              
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
+                  {myAnswer?.is_correct ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12" />}
+                </div>
+                
+                <h2 className="text-5xl font-black tracking-tighter uppercase">
+                  {myAnswer?.is_correct ? "VOCÊ ACERTOU!" : "VOCÊ ERROU!"}
+                </h2>
+
+                <div className="flex items-center gap-3 bg-black/20 px-8 py-4 rounded-2xl border border-white/10">
+                  {getDelta() >= 0 ? <TrendingUp className="w-6 h-6 text-emerald-300" /> : <TrendingDown className="w-6 h-6 text-red-300" />}
+                  <span className="text-3xl font-black">
+                    {getDelta() >= 0 ? "+" : ""} R$ {getDelta().toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="bg-white/90 border-white/20 rounded-[3rem] p-10 shadow-2xl">
+              <div className="space-y-6">
+                <div className="text-center">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Resposta Correta</p>
+                  <div className="inline-block bg-slate-950 text-yellow-500 px-8 py-4 rounded-2xl text-2xl font-black border-2 border-yellow-500/30">
+                    {currentQuestion.correct}: {currentQuestion.options[currentQuestion.correct as keyof typeof currentQuestion.options]}
+                  </div>
+                </div>
+
+                {currentQuestion.explanation && (
+                  <div className="bg-slate-100 p-8 rounded-3xl border border-slate-200">
+                    <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest mb-3">
+                      <Sparkles className="w-4 h-4 text-violet-600" /> Explicação do Lab
+                    </div>
+                    <p className="text-slate-700 text-lg font-medium leading-relaxed italic">
+                      "{currentQuestion.explanation}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
         ) : room.phase === 'finished' ? (
           <Card className="bg-white/5 border-white/10 rounded-[3rem] p-16 text-center space-y-8">
             <Trophy className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" />
